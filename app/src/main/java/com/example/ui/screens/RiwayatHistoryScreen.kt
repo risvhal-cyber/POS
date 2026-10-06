@@ -327,13 +327,11 @@ fun RiwayatHistoryScreen(
                     items(soreList.size) { idx ->
                         TransactionLedgerCard(
                             trx = soreList[idx],
-                            onPrint = { viewModel.showToast("Mencetak struk ${soreList[idx].code} ke Mini POS Thermal...") },
+                            onPrint = {
+                                viewModel.openTransactionReceiptDialog(soreList[idx], autoPrintRequest = true)
+                            },
                             onAction = {
-                                if (soreList[idx].isKasbonPending) {
-                                    viewModel.selectTab(MainTab.KASBON)
-                                } else {
-                                    viewModel.showToast("Membuka WhatsApp ${soreList[idx].customerName}...")
-                                }
+                                viewModel.openTransactionReceiptDialog(soreList[idx], autoPrintRequest = false)
                             },
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                         )
@@ -361,8 +359,12 @@ fun RiwayatHistoryScreen(
                     items(siangList.size) { idx ->
                         TransactionLedgerCard(
                             trx = siangList[idx],
-                            onPrint = { viewModel.showToast("Mencetak struk ${siangList[idx].code}...") },
-                            onAction = { viewModel.showToast("Rincian transaksi ${siangList[idx].customerName}") },
+                            onPrint = {
+                                viewModel.openTransactionReceiptDialog(siangList[idx], autoPrintRequest = true)
+                            },
+                            onAction = {
+                                viewModel.openTransactionReceiptDialog(siangList[idx], autoPrintRequest = false)
+                            },
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                         )
                     }

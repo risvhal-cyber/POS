@@ -66,6 +66,39 @@ data class TransactionItemPreview(
     val imageUrl: String? = null
 )
 
+data class ReceiptLineItem(
+    val name: String,
+    val qty: Double,
+    val unit: String,
+    val unitPrice: Long,
+    val subtotal: Long,
+    val note: String? = null
+) {
+    val qtyFormatted: String
+        get() = if (qty % 1.0 == 0.0) qty.toInt().toString() else qty.toString()
+}
+
+data class CompletedTransactionReceipt(
+    val transactionId: String,
+    val code: String,
+    val timestampLabel: String,
+    val cashierName: String = "Kasir Warung #01",
+    val customerName: String,
+    val customerBadge: String,
+    val method: PaymentMethod,
+    val lineItems: List<ReceiptLineItem>,
+    val subtotalBeforeDiscount: Long,
+    val discountAmount: Long,
+    val totalAmount: Long,
+    val tenderedAmount: Long,
+    val changeAmount: Long,
+    val remainingKasbonAmount: Long = 0L,
+    val deliveryNote: String = "",
+    val printThermalRequested: Boolean = true,
+    val sendWhatsappRequested: Boolean = false,
+    val updatedStockItemsCount: Int = 0
+)
+
 data class TransactionRecord(
     val id: String,
     val code: String,
@@ -80,7 +113,14 @@ data class TransactionRecord(
     val footerLeft: String,
     val footerRight: String,
     val previews: List<TransactionItemPreview> = emptyList(),
-    val isKasbonPending: Boolean = false
+    val isKasbonPending: Boolean = false,
+    val lineItems: List<ReceiptLineItem> = emptyList(),
+    val subtotalBeforeDiscount: Long = totalAmount,
+    val discountAmount: Long = 0L,
+    val tenderedAmount: Long = totalAmount,
+    val changeAmount: Long = 0L,
+    val remainingKasbonAmount: Long = 0L,
+    val deliveryNote: String = ""
 )
 
 data class CustomerDebt(

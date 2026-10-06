@@ -644,7 +644,12 @@ fun PaymentCheckoutScreen(
                             if (currentTendered < billAmount && selectedMethod != PaymentMethod.KASBON) {
                                 viewModel.showToast("Uang kurang! Tambah nominal atau klik 'Sisa Jadi Kasbon'")
                             } else {
-                                viewModel.completeCheckout(selectedMethod, currentTendered)
+                                viewModel.completeCheckout(
+                                    method = selectedMethod,
+                                    tenderedAmount = currentTendered,
+                                    printThermal = printThermal,
+                                    sendWhatsapp = sendWhatsapp
+                                )
                             }
                         },
                         shape = RoundedCornerShape(14.dp),
@@ -685,7 +690,14 @@ fun PaymentCheckoutScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Surface(
-                            onClick = { viewModel.completeCheckout(selectedMethod, currentTendered) },
+                            onClick = {
+                                viewModel.completeCheckout(
+                                    method = selectedMethod,
+                                    tenderedAmount = currentTendered,
+                                    printThermal = false,
+                                    sendWhatsapp = sendWhatsapp
+                                )
+                            },
                             shape = RoundedCornerShape(10.dp),
                             color = SurfaceContainerHigh,
                             modifier = Modifier.weight(1f).height(46.dp)
@@ -702,7 +714,14 @@ fun PaymentCheckoutScreen(
                         }
 
                         Surface(
-                            onClick = { viewModel.completeCheckout(PaymentMethod.SPLIT_BON, currentTendered) },
+                            onClick = {
+                                viewModel.completeCheckout(
+                                    method = PaymentMethod.SPLIT_BON,
+                                    tenderedAmount = currentTendered,
+                                    printThermal = printThermal,
+                                    sendWhatsapp = sendWhatsapp
+                                )
+                            },
                             shape = RoundedCornerShape(10.dp),
                             color = SecondaryContainer,
                             modifier = Modifier.weight(1f).height(46.dp)

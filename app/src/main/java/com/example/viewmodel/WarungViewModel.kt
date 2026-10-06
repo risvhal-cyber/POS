@@ -18,6 +18,9 @@ class WarungViewModel : ViewModel() {
     private val _toastMessage = MutableStateFlow<String?>(null)
     val toastMessage: StateFlow<String?> = _toastMessage.asStateFlow()
 
+    private val _activeCompletedReceipt = MutableStateFlow<CompletedTransactionReceipt?>(null)
+    val activeCompletedReceipt: StateFlow<CompletedTransactionReceipt?> = _activeCompletedReceipt.asStateFlow()
+
     // Store & Theme Settings
     private val _storeName = MutableStateFlow("Warung Laufi Kelontong")
     val storeName: StateFlow<String> = _storeName.asStateFlow()
@@ -434,7 +437,16 @@ class WarungViewModel : ViewModel() {
                 previews = listOf(
                     TransactionItemPreview("Beras & Gula", "3 Item", WarungImages.BERAS_GULA),
                     TransactionItemPreview("Minyak Kita 2L", "1 Pcs", null)
-                )
+                ),
+                lineItems = listOf(
+                    ReceiptLineItem("Beras Ramos 1 Kg (Ecer)", 2.0, "kg", 15000L, 30000L, "Timbangan Pas"),
+                    ReceiptLineItem("Minyak Goreng Kita 1L", 1.0, "pch", 16500L, 16500L, "Harga HET"),
+                    ReceiptLineItem("Gula Pasir Gulaku 1 Kg", 1.0, "bks", 17500L, 17500L)
+                ),
+                subtotalBeforeDiscount = 64000L,
+                discountAmount = 0L,
+                tenderedAmount = 100000L,
+                changeAmount = 36000L
             ),
             TransactionRecord(
                 id = "trx-2",
@@ -453,7 +465,16 @@ class WarungViewModel : ViewModel() {
                     TransactionItemPreview("Gas LPG Melon", "2 Tabung", null),
                     TransactionItemPreview("Rokok Surya 16", "1 Bks", null)
                 ),
-                isKasbonPending = true
+                isKasbonPending = true,
+                lineItems = listOf(
+                    ReceiptLineItem("Gas LPG 3kg Melon (Tukar Tabung)", 2.0, "tbg", 21000L, 42000L),
+                    ReceiptLineItem("Rokok Surya Gudang Garam 16", 1.0, "bks", 34000L, 34000L)
+                ),
+                subtotalBeforeDiscount = 76000L,
+                discountAmount = 0L,
+                tenderedAmount = 0L,
+                changeAmount = 0L,
+                remainingKasbonAmount = 76000L
             ),
             TransactionRecord(
                 id = "trx-3",
@@ -471,7 +492,15 @@ class WarungViewModel : ViewModel() {
                 previews = listOf(
                     TransactionItemPreview("Telur Curah", "2 Kg", WarungImages.TELUR_2),
                     TransactionItemPreview("Indomie Goreng", "5 Bks", WarungImages.INDOMIE)
-                )
+                ),
+                lineItems = listOf(
+                    ReceiptLineItem("Telur Ayam Ras Curah", 2.0, "kg", 28000L, 56000L),
+                    ReceiptLineItem("Indomie Goreng Spesial", 5.0, "bks", 3500L, 17500L)
+                ),
+                subtotalBeforeDiscount = 73500L,
+                discountAmount = 0L,
+                tenderedAmount = 73500L,
+                changeAmount = 0L
             ),
             TransactionRecord(
                 id = "trx-4",
@@ -490,7 +519,17 @@ class WarungViewModel : ViewModel() {
                     TransactionItemPreview("Terigu Segitiga", "1 Kg", WarungImages.BERAS_GULA),
                     TransactionItemPreview("Minyak Goreng", "2 Liter", null)
                 ),
-                isKasbonPending = true
+                isKasbonPending = true,
+                lineItems = listOf(
+                    ReceiptLineItem("Minyak Goreng Kita 2L", 1.0, "pch", 33000L, 33000L),
+                    ReceiptLineItem("Terigu Segitiga Biru 1kg", 1.0, "bks", 15000L, 15000L),
+                    ReceiptLineItem("Galon Aqua 19L (Refill)", 1.0, "gln", 20000L, 20000L)
+                ),
+                subtotalBeforeDiscount = 68000L,
+                discountAmount = 0L,
+                tenderedAmount = 20000L,
+                changeAmount = 0L,
+                remainingKasbonAmount = 48000L
             ),
             TransactionRecord(
                 id = "trx-5",
@@ -504,7 +543,15 @@ class WarungViewModel : ViewModel() {
                 itemsSummary = "Manual Eceran: Bumbu Dapur Racik + Cabai Rawit",
                 totalItemsCount = "Eceran",
                 footerLeft = "Uang Pas: Rp 15.000",
-                footerRight = "Kembalian: Rp 0"
+                footerRight = "Kembalian: Rp 0",
+                lineItems = listOf(
+                    ReceiptLineItem("Bumbu Dapur Racik Komplit", 1.0, "pkt", 5000L, 5000L),
+                    ReceiptLineItem("Cabai Rawit Merah Eceran (2 Ons)", 0.2, "kg", 50000L, 10000L)
+                ),
+                subtotalBeforeDiscount = 15000L,
+                discountAmount = 0L,
+                tenderedAmount = 15000L,
+                changeAmount = 0L
             )
         )
     )
@@ -828,38 +875,114 @@ class WarungViewModel : ViewModel() {
         )
     }
 
-    fun completeCheckout(method: PaymentMethod, tenderedAmount: Long, customerName: String = _selectedCustomerName.value) {
-        val total = getCartTotal().let { if (it > 0) it else 64000L }
-        val itemsList = _cartItems.value
-        val summaryStr = if (itemsList.isNotEmpty()) {
-            itemsList.joinToString(", ") { "${it.qty.toInt()}x ${it.name}" }
+    fun dismissCompletedReceipt() {
+        _activeCompletedReceipt.value = null
+    }
+
+    fun openTransactionReceiptDialog(trx: TransactionRecord, autoPrintRequest: Boolean = false) {
+        val fallbackLines = if (trx.lineItems.isNotEmpty()) {
+            trx.lineItems
         } else {
-            "Transaksi Cepat Kasir"
+            listOf(
+                ReceiptLineItem(
+                    name = trx.itemsSummary,
+                    qty = 1.0,
+                    unit = "paket",
+                    unitPrice = trx.totalAmount,
+                    subtotal = trx.totalAmount
+                )
+            )
+        }
+        _activeCompletedReceipt.value = CompletedTransactionReceipt(
+            transactionId = trx.id,
+            code = trx.code,
+            timestampLabel = "24 Mei 2025 • ${trx.timeWib}",
+            customerName = trx.customerName,
+            customerBadge = trx.customerBadge,
+            method = trx.method,
+            lineItems = fallbackLines,
+            subtotalBeforeDiscount = trx.subtotalBeforeDiscount.coerceAtLeast(trx.totalAmount),
+            discountAmount = trx.discountAmount,
+            totalAmount = trx.totalAmount,
+            tenderedAmount = trx.tenderedAmount,
+            changeAmount = trx.changeAmount,
+            remainingKasbonAmount = trx.remainingKasbonAmount,
+            deliveryNote = trx.deliveryNote,
+            printThermalRequested = autoPrintRequest || _autoPrint.value,
+            sendWhatsappRequested = false,
+            updatedStockItemsCount = fallbackLines.size
+        )
+    }
+
+    fun completeCheckout(
+        method: PaymentMethod,
+        tenderedAmount: Long,
+        customerName: String = _selectedCustomerName.value,
+        printThermal: Boolean = _autoPrint.value,
+        sendWhatsapp: Boolean = false
+    ) {
+        val rawCartSubtotal = getCartTotal().let { if (it > 0) it else 64000L }
+        val activeDiscount = _discountAmount.value.coerceAtMost(rawCartSubtotal)
+        val total = (rawCartSubtotal - activeDiscount).coerceAtLeast(0L).let { if (it > 0) it else rawCartSubtotal }
+        val itemsList = _cartItems.value
+        val receiptLines = if (itemsList.isNotEmpty()) {
+            itemsList.map { cart ->
+                ReceiptLineItem(
+                    name = cart.name,
+                    qty = cart.qty,
+                    unit = cart.unit,
+                    unitPrice = cart.price,
+                    subtotal = cart.subtotal,
+                    note = cart.note
+                )
+            }
+        } else {
+            listOf(
+                ReceiptLineItem(
+                    name = "Beras Ramos 1 Kg (Ecer)",
+                    qty = 2.0,
+                    unit = "kg",
+                    unitPrice = 15000L,
+                    subtotal = 30000L
+                ),
+                ReceiptLineItem(
+                    name = "Minyak Goreng Kita 1L",
+                    qty = 2.0,
+                    unit = "pch",
+                    unitPrice = 17000L,
+                    subtotal = 34000L
+                )
+            )
+        }
+
+        val summaryStr = if (itemsList.isNotEmpty()) {
+            itemsList.joinToString(", ") {
+                val q = if (it.qty % 1.0 == 0.0) it.qty.toInt().toString() else it.qty.toString()
+                "${q}x ${it.name}"
+            }
+        } else {
+            "2x Beras Ramos 1 Kg, 2x Minyak Goreng Kita 1L"
         }
         val trxCode = "#TRX-20250524-00${_transactions.value.size + 43}"
-        val cleanCustName = customerName.substringBefore(" (")
-        val change = (tenderedAmount - total).coerceAtLeast(0L)
-        val newTrx = TransactionRecord(
-            id = "trx-${System.currentTimeMillis()}",
-            code = trxCode,
-            customerName = cleanCustName,
-            customerBadge = when (method) {
-                PaymentMethod.TUNAI -> "Tunai Lunas"
-                PaymentMethod.QRIS -> "QRIS Toko"
-                PaymentMethod.KASBON -> "Tempo 7 Hari"
-                PaymentMethod.SPLIT_BON -> "Split Bayar"
-            },
-            timeWib = "Baru saja",
-            timeGroup = "Sore Ini (15:00 - 18:00)",
-            totalAmount = total,
-            method = method,
-            itemsSummary = summaryStr,
-            totalItemsCount = "${itemsList.size.coerceAtLeast(1)} Item",
-            footerLeft = if (method == PaymentMethod.KASBON) "Jatuh Tempo: Minggu Depan" else "Uang Diterima: ${formatRupiah(tenderedAmount)}",
-            footerRight = if (method == PaymentMethod.KASBON) "Masuk Buku Bon" else "Kembalian: ${formatRupiah(change)}",
-            isKasbonPending = method == PaymentMethod.KASBON || method == PaymentMethod.SPLIT_BON
-        )
-        _transactions.update { listOf(newTrx) + it }
+        val cleanCustName = customerName.substringBefore(" (").ifBlank { "Pelanggan Umum" }
+        val effectiveTendered = when (method) {
+            PaymentMethod.KASBON -> 0L
+            PaymentMethod.QRIS -> total
+            else -> tenderedAmount
+        }
+        val change = (effectiveTendered - total).coerceAtLeast(0L)
+        val remainingDebt = when {
+            method == PaymentMethod.KASBON -> total
+            method == PaymentMethod.SPLIT_BON && effectiveTendered < total -> (total - effectiveTendered).coerceAtLeast(0L)
+            effectiveTendered < total -> (total - effectiveTendered).coerceAtLeast(0L)
+            else -> 0L
+        }
+        val badgeLabel = when (method) {
+            PaymentMethod.TUNAI -> "Tunai Lunas"
+            PaymentMethod.QRIS -> "QRIS Toko"
+            PaymentMethod.KASBON -> "Tempo 7 Hari"
+            PaymentMethod.SPLIT_BON -> "Split Bayar"
+        }
 
         // Pembaruan Stok Otomatis Setelah Transaksi Kasir
         var updatedStockCount = 0
@@ -913,13 +1036,62 @@ class WarungViewModel : ViewModel() {
             }
         }
 
-        if (method == PaymentMethod.KASBON || (method == PaymentMethod.SPLIT_BON && tenderedAmount < total)) {
-            val debtDiff = if (method == PaymentMethod.KASBON) total else (total - tenderedAmount)
-            recordNewKasbon(cleanCustName, summaryStr, debtDiff, "Minggu Depan")
+        val newTrxId = "trx-${System.currentTimeMillis()}"
+        val previews = itemsList.take(3).map {
+            val q = if (it.qty % 1.0 == 0.0) it.qty.toInt().toString() else it.qty.toString()
+            TransactionItemPreview(it.name, "$q ${it.unit}", it.imageUrl)
+        }
+        val newTrx = TransactionRecord(
+            id = newTrxId,
+            code = trxCode,
+            customerName = cleanCustName,
+            customerBadge = badgeLabel,
+            timeWib = "Baru saja",
+            timeGroup = "Sore Ini (15:00 - 18:00)",
+            totalAmount = total,
+            method = method,
+            itemsSummary = summaryStr,
+            totalItemsCount = "${receiptLines.size} Item",
+            footerLeft = if (method == PaymentMethod.KASBON) "Jatuh Tempo: Minggu Depan" else "Uang Diterima: ${formatRupiah(effectiveTendered)}",
+            footerRight = if (remainingDebt > 0L) "Masuk Bon: ${formatRupiah(remainingDebt)}" else "Kembalian: ${formatRupiah(change)}",
+            previews = previews,
+            isKasbonPending = method == PaymentMethod.KASBON || method == PaymentMethod.SPLIT_BON || remainingDebt > 0L,
+            lineItems = receiptLines,
+            subtotalBeforeDiscount = rawCartSubtotal,
+            discountAmount = activeDiscount,
+            tenderedAmount = effectiveTendered,
+            changeAmount = change,
+            remainingKasbonAmount = remainingDebt,
+            deliveryNote = _deliveryNote.value
+        )
+        _transactions.update { listOf(newTrx) + it }
+
+        if (remainingDebt > 0L) {
+            recordNewKasbon(cleanCustName, summaryStr, remainingDebt, "Minggu Depan")
         }
 
+        _activeCompletedReceipt.value = CompletedTransactionReceipt(
+            transactionId = newTrxId,
+            code = trxCode,
+            timestampLabel = "24 Mei 2025 • 17:38 WIB",
+            customerName = cleanCustName,
+            customerBadge = badgeLabel,
+            method = method,
+            lineItems = receiptLines,
+            subtotalBeforeDiscount = rawCartSubtotal,
+            discountAmount = activeDiscount,
+            totalAmount = total,
+            tenderedAmount = effectiveTendered,
+            changeAmount = change,
+            remainingKasbonAmount = remainingDebt,
+            deliveryNote = _deliveryNote.value,
+            printThermalRequested = printThermal,
+            sendWhatsappRequested = sendWhatsapp,
+            updatedStockItemsCount = updatedStockCount
+        )
+
         _cartItems.value = emptyList()
-        val stockSuffix = if (updatedStockCount > 0) " • Stok $updatedStockCount barang otomatis diperbarui!" else ""
+        val stockSuffix = if (updatedStockCount > 0) " • Stok $updatedStockCount barang diperbarui!" else ""
         showToast("Transaksi ${formatRupiah(total)} Berhasil!$stockSuffix")
         _navigationStack.value = listOf(ScreenRoute.MainTabs)
     }

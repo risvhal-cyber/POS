@@ -20,7 +20,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.model.MainTab
 import com.example.model.ScreenRoute
+import com.example.model.formatRupiah
 import com.example.ui.components.FloatingToastBanner
+import com.example.ui.components.TransactionReceiptSuccessDialog
 import com.example.ui.components.WarungBottomNavigationBar
 import com.example.ui.screens.*
 import com.example.ui.theme.WarungTheme
@@ -45,6 +47,11 @@ fun WarungPosApp(
     val currentTab by viewModel.currentTab.collectAsState()
     val navStack by viewModel.navigationStack.collectAsState()
     val toastMessage by viewModel.toastMessage.collectAsState()
+    val activeCompletedReceipt by viewModel.activeCompletedReceipt.collectAsState()
+    val storeName by viewModel.storeName.collectAsState()
+    val storeAddress by viewModel.storeAddress.collectAsState()
+    val storePhone by viewModel.storePhone.collectAsState()
+    val paperSize58mm by viewModel.paperSize58mm.collectAsState()
 
     val currentRoute = navStack.lastOrNull() ?: ScreenRoute.MainTabs
 
@@ -103,6 +110,28 @@ fun WarungPosApp(
                 is ScreenRoute.Settings -> {
                     SettingsScreen(viewModel = viewModel)
                 }
+            }
+
+            // Global Completed Transaction Detail & Printed Thermal Receipt Dialog
+            activeCompletedReceipt?.let { receipt ->
+                TransactionReceiptSuccessDialog(
+                    receipt = receipt,
+                    storeName = storeName,
+                    storeAddress = storeAddress,
+                    storePhone = storePhone,
+                    paperSize58mm = paperSize58mm,
+                    onDismiss = { viewModel.dismissCompletedReceipt() },
+                    onPrintAgain = {
+                        viewModel.showToast("Mencetak ulang struk ${receipt.code} ke Printer Thermal ${if (paperSize58mm) "58mm" else "80mm"}...")
+                    },
+                    onShareWhatsapp = {
+                        viewModel.showToast("Mengirim resi digital ${receipt.code} (${formatRupiah(receipt.totalAmount)}) ke WhatsApp ${receipt.customerName}...")
+                    },
+                    onOpenHistory = {
+                        viewModel.dismissCompletedReceipt()
+                        viewModel.selectTab(MainTab.RIWAYAT)
+                    }
+                )
             }
 
             // Global Floating Toast Notification
