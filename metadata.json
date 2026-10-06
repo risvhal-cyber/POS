@@ -1,0 +1,6 @@
+{
+  "name": "Warung Laufi POS",
+  "description": "Aplikasi kasir pintar, manajemen stok kulakan, buku kasbon warga, dan laporan omzet untuk toko kelontong & warung sembako.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

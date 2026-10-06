@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Warung Laufi POS</string>
+    <string name="store_name">Warung Laufi Kelontong</string>
+    <string name="cashier_status">Kasir Buka (Offline Siap)</string>
+    <string name="tab_riwayat">Riwayat</string>
+    <string name="tab_stok">Stok</string>
+    <string name="tab_kasir">Kasir</string>
+    <string name="tab_kasbon">Kasbon</string>
+    <string name="tab_laporan">Laporan</string>
+</resources>
