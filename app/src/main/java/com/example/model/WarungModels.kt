@@ -122,6 +122,19 @@ data class CurahPreset(
     val badge: String? = null
 )
 
+data class PosCatalogItem(
+    val id: String,
+    val barcode: String,
+    val name: String,
+    val price: Long,
+    val unit: String,
+    val category: String,
+    val stockLabel: String,
+    val imageUrl: String? = null,
+    val badgeText: String? = null,
+    val isPopular: Boolean = true
+)
+
 fun formatRupiah(amount: Long): String {
     val formatter = NumberFormat.getNumberInstance(Locale("id", "ID"))
     return "Rp ${formatter.format(amount)}"

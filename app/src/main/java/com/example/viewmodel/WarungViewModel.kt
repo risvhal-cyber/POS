@@ -95,6 +95,133 @@ class WarungViewModel : ViewModel() {
     private val _discountAmount = MutableStateFlow(5000L)
     val discountAmount: StateFlow<Long> = _discountAmount.asStateFlow()
 
+    private val _initialTenderedAmount = MutableStateFlow(100000L)
+    val initialTenderedAmount: StateFlow<Long> = _initialTenderedAmount.asStateFlow()
+
+    // POS Quick Selectable & Scannable Product Catalog
+    val posCatalog = listOf(
+        PosCatalogItem(
+            id = "cat-minyak-kita",
+            barcode = "8992775211025",
+            name = "Minyak Goreng Kita 1L",
+            price = 16500L,
+            unit = "pch",
+            category = "Sembako & Eceran",
+            stockLabel = "Stok: 18 Pch",
+            imageUrl = WarungImages.MINYAK_KITA_2,
+            badgeText = "HET Resmi",
+            isPopular = true
+        ),
+        PosCatalogItem(
+            id = "cat-beras-1kg",
+            barcode = "8991002104512",
+            name = "Beras Ramos 1 Kg (Ecer)",
+            price = 15000L,
+            unit = "kg",
+            category = "Sembako & Eceran",
+            stockLabel = "Stok: 85 Kg",
+            imageUrl = WarungImages.BERAS_SCOOP,
+            badgeText = "Timbangan Pas",
+            isPopular = true
+        ),
+        PosCatalogItem(
+            id = "cat-telur-1kg",
+            barcode = "8991002998120",
+            name = "Telur Ayam Ras 1 Kg",
+            price = 28000L,
+            unit = "kg",
+            category = "Sembako & Eceran",
+            stockLabel = "Stok: 14 Kg",
+            imageUrl = WarungImages.TELUR_1,
+            badgeText = "Segar Utuh",
+            isPopular = true
+        ),
+        PosCatalogItem(
+            id = "cat-indomie",
+            barcode = "089686010947",
+            name = "Indomie Goreng Spesial",
+            price = 3500L,
+            unit = "bks",
+            category = "Mie & Makanan",
+            stockLabel = "Stok: 48 Bks",
+            imageUrl = WarungImages.INDOMIE,
+            badgeText = "Terlaris",
+            isPopular = true
+        ),
+        PosCatalogItem(
+            id = "cat-gulaku",
+            barcode = "8995177101012",
+            name = "Gula Pasir Gulaku 1 Kg",
+            price = 17500L,
+            unit = "bks",
+            category = "Sembako & Eceran",
+            stockLabel = "Stok: 15 Bks",
+            imageUrl = WarungImages.BERAS_GULA,
+            badgeText = "Murni",
+            isPopular = true
+        ),
+        PosCatalogItem(
+            id = "cat-gas-3kg",
+            barcode = "8990011223344",
+            name = "Gas LPG 3 Kg Melon (Isi)",
+            price = 21000L,
+            unit = "tbg",
+            category = "Gas & Galon",
+            stockLabel = "Stok: 14 Tbg",
+            imageUrl = WarungImages.GAS_LPG_2,
+            badgeText = "Tukar Tabung",
+            isPopular = true
+        ),
+        PosCatalogItem(
+            id = "cat-aqua-galon",
+            barcode = "8886008101091",
+            name = "Galon Aqua 19L (Refill)",
+            price = 20000L,
+            unit = "gln",
+            category = "Gas & Galon",
+            stockLabel = "Stok: 18 Gln",
+            imageUrl = WarungImages.GALON_AQUA_2,
+            badgeText = "Segel Asli",
+            isPopular = true
+        ),
+        PosCatalogItem(
+            id = "cat-le-minerale",
+            barcode = "8996001600269",
+            name = "Galon Le Minerale 15L",
+            price = 19000L,
+            unit = "gln",
+            category = "Minuman Dingin",
+            stockLabel = "Stok: 12 Gln",
+            imageUrl = WarungImages.LE_MINERALE,
+            badgeText = "Bebas Galon",
+            isPopular = false
+        ),
+        PosCatalogItem(
+            id = "cat-rokok-mild",
+            barcode = "8999909002517",
+            name = "Sampoerna Mild 16",
+            price = 34000L,
+            unit = "bks",
+            category = "Rokok",
+            stockLabel = "Stok: 10 Bks",
+            imageUrl = WarungImages.BERAS_GULA,
+            badgeText = "Cukai Baru",
+            isPopular = false
+        ),
+        PosCatalogItem(
+            id = "cat-sabun-cuci",
+            barcode = "8998866200318",
+            name = "Sunlight Jeruk Nipis 650ml",
+            price = 12500L,
+            unit = "pch",
+            category = "Sabun & Bumbu",
+            stockLabel = "Stok: 22 Pch",
+            imageUrl = WarungImages.MINYAK_KITA_1,
+            badgeText = "Hemat",
+            isPopular = false
+        )
+    )
+
     // Stock Items (Matches Image 9)
     private val _stockItems = MutableStateFlow(
         listOf(
@@ -635,6 +762,31 @@ class WarungViewModel : ViewModel() {
 
     fun updateDeliveryNote(note: String) {
         _deliveryNote.value = note
+    }
+
+    fun toggleDiscount() {
+        _discountAmount.update { current ->
+            val next = if (current > 0L) 0L else 5000L
+            showToast(if (next > 0L) "Diskon Pelanggan Tetap Rp 5.000 diaktifkan" else "Diskon dilepas")
+            next
+        }
+    }
+
+    fun openPaymentWithPreset(tendered: Long) {
+        _initialTenderedAmount.value = tendered
+        navigateTo(ScreenRoute.PaymentCheckout)
+    }
+
+    fun scanOrSelectCatalogItem(item: PosCatalogItem, qty: Double = 1.0) {
+        addToCart(
+            name = item.name,
+            price = item.price,
+            qty = qty,
+            unit = item.unit,
+            category = item.category,
+            imageUrl = item.imageUrl,
+            note = item.badgeText
+        )
     }
 
     fun completeCheckout(method: PaymentMethod, tenderedAmount: Long, customerName: String = _selectedCustomerName.value) {

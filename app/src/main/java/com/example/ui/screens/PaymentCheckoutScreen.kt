@@ -37,6 +37,7 @@ fun PaymentCheckoutScreen(
 
     val cartItems by viewModel.cartItems.collectAsState()
     val customerName by viewModel.selectedCustomerName.collectAsState()
+    val initialTendered by viewModel.initialTenderedAmount.collectAsState()
 
     val billAmount = remember(cartItems) {
         val sum = cartItems.sumOf { it.subtotal }
@@ -44,7 +45,7 @@ fun PaymentCheckoutScreen(
     }
 
     var selectedMethod by remember { mutableStateOf(PaymentMethod.TUNAI) }
-    var currentTendered by remember { mutableStateOf(100000L) }
+    var currentTendered by remember(initialTendered) { mutableStateOf(if (initialTendered > 0L) initialTendered else 100000L) }
     var printThermal by remember { mutableStateOf(true) }
     var sendWhatsapp by remember { mutableStateOf(false) }
 

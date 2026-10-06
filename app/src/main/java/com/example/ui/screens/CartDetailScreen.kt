@@ -44,37 +44,13 @@ fun CartDetailScreen(
     val cartItems by viewModel.cartItems.collectAsState()
     val deliveryNote by viewModel.deliveryNote.collectAsState()
     val discountAmount by viewModel.discountAmount.collectAsState()
+    var showPosScannerSheet by remember { mutableStateOf(false) }
 
-    val displayItems = remember(cartItems) {
-        if (cartItems.size >= 5) cartItems else {
-            cartItems + listOf(
-                CartItem(
-                    id = "item-gas-3kg",
-                    name = "Gas LPG 3 Kg Tabung Melon",
-                    price = 21000L,
-                    qty = 1.0,
-                    unit = "tabung isi ulang",
-                    category = "Gas LPG",
-                    imageUrl = WarungImages.GAS_LPG_1,
-                    badgeText = "Tukar Tabung Siap",
-                    note = "Kondisi fisik tabung normal & segel utuh"
-                ),
-                CartItem(
-                    id = "item-telur-1kg",
-                    name = "Telur Ayam Negeri 1 Kg",
-                    price = 28000L,
-                    qty = 1.0,
-                    unit = "kg",
-                    category = "Sembako",
-                    imageUrl = WarungImages.TELUR_2,
-                    badgeText = "Kondisi Utuh"
-                )
-            ).filter { extra -> cartItems.none { it.name.contains(extra.name.take(8), ignoreCase = true) } }
-        }
-    }
+    val displayItems = remember(cartItems) { cartItems }
 
-    val rawTotal = displayItems.sumOf { it.subtotal }.let { if (it > 0) it else 69000L }
-    val cleanTotal = (rawTotal - discountAmount).coerceAtLeast(0L)
+    val rawTotal = displayItems.sumOf { it.subtotal }
+    val activeDiscount = if (rawTotal > 0L) discountAmount else 0L
+    val cleanTotal = (rawTotal - activeDiscount).coerceAtLeast(0L)
     val totalItemTypes = displayItems.size
     val totalPcs = displayItems.sumOf { Math.ceil(it.qty).toInt() }
 
@@ -216,7 +192,7 @@ fun CartDetailScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Surface(
-                                onClick = { viewModel.navigateTo(ScreenRoute.WholesaleCalculator(openScanSheet = true)) },
+                                onClick = { showPosScannerSheet = true },
                                 shape = RoundedCornerShape(10.dp),
                                 color = PrimaryFixed
                             ) {
@@ -226,7 +202,7 @@ fun CartDetailScreen(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, tint = OnPrimaryFixed, modifier = Modifier.size(18.dp))
-                                    Text("+ Scan Barang", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = OnPrimaryFixed)
+                                    Text("+ Scan / Pilih Barang", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = OnPrimaryFixed)
                                 }
                             }
                             Surface(
@@ -244,17 +220,17 @@ fun CartDetailScreen(
                                 }
                             }
                             Surface(
-                                onClick = { viewModel.showToast("Diskon Pelanggan Tetap RT Rp 5.000 aktif") },
+                                onClick = { viewModel.toggleDiscount() },
                                 shape = RoundedCornerShape(10.dp),
-                                color = SurfaceContainerHigh
+                                color = if (activeDiscount > 0L) PrimaryFixed else SurfaceContainerHigh
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Icon(Icons.Outlined.Loyalty, contentDescription = null, tint = OnSurface, modifier = Modifier.size(18.dp))
-                                    Text("Kupon Diskon", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = OnSurface)
+                                    Icon(Icons.Outlined.Loyalty, contentDescription = null, tint = if (activeDiscount > 0L) OnPrimaryFixed else OnSurface, modifier = Modifier.size(18.dp))
+                                    Text("Kupon Diskon", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = if (activeDiscount > 0L) OnPrimaryFixed else OnSurface)
                                 }
                             }
                         }
@@ -432,27 +408,32 @@ fun CartDetailScreen(
                             color = OnSurfaceVariant,
                             modifier = Modifier.padding(bottom = 6.dp)
                         )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            listOf("Uang Pas", "Rp 65rb", "Rp 70rb", "Rp 100rb").forEach { label ->
-                                Surface(
-                                    onClick = { viewModel.navigateTo(ScreenRoute.PaymentCheckout) },
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = SurfaceContainerLowest,
-                                    shadowElevation = 1.dp,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = label,
-                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.padding(vertical = 10.dp)
-                                    )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                listOf(
+                                    Pair("Uang Pas", cleanTotal),
+                                    Pair("Rp 65rb", 65000L),
+                                    Pair("Rp 70rb", 70000L),
+                                    Pair("Rp 100rb", 100000L)
+                                ).forEach { (label, amountVal) ->
+                                    Surface(
+                                        onClick = { viewModel.openPaymentWithPreset(amountVal) },
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = SurfaceContainerLowest,
+                                        shadowElevation = 1.dp,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.padding(vertical = 10.dp)
+                                        )
+                                    }
                                 }
                             }
-                        }
                     }
                 }
             }
@@ -538,16 +519,16 @@ fun CartDetailScreen(
                         }
                     }
 
-                    Surface(
-                        onClick = { viewModel.navigateTo(ScreenRoute.PaymentCheckout) },
-                        shape = RoundedCornerShape(14.dp),
-                        color = SecondaryContainer,
-                        shadowElevation = 4.dp,
-                        modifier = Modifier
-                            .weight(2f)
-                            .height(54.dp)
-                            .testTag("cart_detail_pay_now")
-                    ) {
+                        Surface(
+                            onClick = { viewModel.openPaymentWithPreset(if (cleanTotal > 0L) cleanTotal else 64000L) },
+                            shape = RoundedCornerShape(14.dp),
+                            color = SecondaryContainer,
+                            shadowElevation = 4.dp,
+                            modifier = Modifier
+                                .weight(2f)
+                                .height(54.dp)
+                                .testTag("cart_detail_pay_now")
+                        ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -567,6 +548,70 @@ fun CartDetailScreen(
                     }
                 }
             }
+        }
+
+        if (showPosScannerSheet) {
+            AlertDialog(
+                onDismissRequest = { showPosScannerSheet = false },
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, tint = Primary)
+                        Text("Scan / Pilih Barang Cepat", style = MaterialTheme.typography.headlineSmall)
+                    }
+                },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Ketuk barang di bawah untuk memindai barcode & menambahkannya ke daftar belanja:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = OnSurfaceVariant
+                        )
+                        viewModel.posCatalog.take(6).forEach { catItem ->
+                            Surface(
+                                onClick = {
+                                    viewModel.scanOrSelectCatalogItem(catItem, 1.0)
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                color = SurfaceContainerLow,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(catItem.name, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold))
+                                        Text("${catItem.barcode} • ${formatRupiah(catItem.price)}/${catItem.unit}", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+                                    }
+                                    Surface(shape = RoundedCornerShape(6.dp), color = Primary) {
+                                        Text(
+                                            text = "+ Tambah",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = Color.White,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { showPosScannerSheet = false },
+                        colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                    ) {
+                        Text("Selesai Pilih")
+                    }
+                }
+            )
         }
     }
 }
