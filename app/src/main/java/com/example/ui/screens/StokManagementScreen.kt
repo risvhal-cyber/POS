@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -107,11 +108,16 @@ fun StokManagementScreen(
         }
     }
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface)
+        ) {
         // Top Header
         Surface(
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
@@ -879,124 +885,119 @@ fun StokManagementScreen(
         val totalNilaiKulak = hargaKulak * qtyMasuk
         val methodLabels = listOf("Kulakan Baru", "Koreksi Opname", "Retur Masuk")
 
-        Dialog(
-            onDismissRequest = {
-                dismissKeyboard()
-                showAddManualStockSheet = false
-            },
-            properties = DialogProperties(
-                usePlatformDefaultWidth = false,
-                decorFitsSystemWindows = true
-            )
+        BackHandler(enabled = showAddManualStockSheet) {
+            dismissKeyboard()
+            showAddManualStockSheet = false
+        }
+
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null
+                ) {
+                    dismissKeyboard()
+                }
+                .testTag("modal_catat_barang_masuk_fullscreen"),
+            color = MaterialTheme.colorScheme.surface
         ) {
-            Surface(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clickable(
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        dismissKeyboard()
-                    }
-                    .testTag("modal_catat_barang_masuk_fullscreen"),
-                color = MaterialTheme.colorScheme.surface
+                    .statusBarsPadding()
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .systemBarsPadding()
+                // Sticky Top Bar Modal Layar Penuh
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 3.dp,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Sticky Top Bar Modal Layar Penuh
-                    Surface(
-                        color = MaterialTheme.colorScheme.surface,
-                        shadowElevation = 3.dp,
-                        modifier = Modifier.fillMaxWidth()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.weight(1f)
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                modifier = Modifier.weight(1f)
+                            Surface(
+                                onClick = {
+                                    dismissKeyboard()
+                                    showAddManualStockSheet = false
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                color = SurfaceContainerHigh,
+                                modifier = Modifier.size(40.dp)
                             ) {
-                                Surface(
-                                    onClick = {
-                                        dismissKeyboard()
-                                        showAddManualStockSheet = false
-                                    },
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = SurfaceContainerHigh,
-                                    modifier = Modifier.size(40.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = Icons.Default.Close,
-                                            contentDescription = "Tutup Modal",
-                                            tint = OnSurface
-                                        )
-                                    }
-                                }
-                                Column {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Text(
-                                            text = "Catat Barang Masuk (Kulakan)",
-                                            style = MaterialTheme.typography.headlineSmall
-                                        )
-                                        Surface(
-                                            shape = RoundedCornerShape(6.dp),
-                                            color = PrimaryFixed
-                                        ) {
-                                            Text(
-                                                text = "Layar Penuh",
-                                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Bold),
-                                                color = OnPrimaryFixed,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                    }
-                                    Text(
-                                        text = "Cari barang, pilih kategori, atau Smart Add otomatis",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = OnSurfaceVariant
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Tutup Modal",
+                                        tint = OnSurface
                                     )
                                 }
                             }
-
-                            if (isAnyTextFieldFocused) {
-                                Surface(
-                                    onClick = { dismissKeyboard() },
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = PrimaryFixed
+                            Column {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    Text(
+                                        text = "Catat Barang Masuk (Kulakan)",
+                                        style = MaterialTheme.typography.headlineSmall
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = PrimaryFixed
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.KeyboardHide,
-                                            contentDescription = "Sembunyikan Keyboard",
-                                            tint = OnPrimaryFixed,
-                                            modifier = Modifier.size(16.dp)
-                                        )
                                         Text(
-                                            text = "Tutup Ketik",
-                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                            color = OnPrimaryFixed
+                                            text = "Layar Penuh",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Bold),
+                                            color = OnPrimaryFixed,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                         )
                                     }
+                                }
+                                Text(
+                                    text = "Cari barang, pilih kategori, atau Smart Add otomatis",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = OnSurfaceVariant
+                                )
+                            }
+                        }
+
+                        if (isAnyTextFieldFocused) {
+                            Surface(
+                                onClick = { dismissKeyboard() },
+                                shape = RoundedCornerShape(8.dp),
+                                color = PrimaryFixed
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.KeyboardHide,
+                                        contentDescription = "Sembunyikan Keyboard",
+                                        tint = OnPrimaryFixed,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = "Tutup Ketik",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = OnPrimaryFixed
+                                    )
                                 }
                             }
                         }
                     }
+                }
 
                     // Body Konten yang Dapat Di-scroll Penuh dengan Mudah (Otomatis sembunyikan keyboard saat di-scroll)
                     Column(
@@ -1566,23 +1567,26 @@ fun StokManagementScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                     }
 
-                    // Sticky Bottom Bar (Dinaikkan agar tidak menutupi / mengganggu bar navigasi HP)
+                    // Sticky Bottom Bar (Dinaikkan di atas bar navigasi HP & Bottom Nav agar tombol Smart Add tidak bentrok dengan garis gesture HP)
                     Surface(
                         color = MaterialTheme.colorScheme.surface,
-                        shadowElevation = 14.dp,
-                        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        shadowElevation = 16.dp,
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 14.dp)
+                            .border(1.dp, OutlineVariant.copy(alpha = 0.45f), RoundedCornerShape(20.dp))
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(
-                                    start = 16.dp,
-                                    end = 16.dp,
-                                    top = 12.dp,
-                                    bottom = 24.dp // Jarak aman dari gesture / tombol navigasi bawah HP
+                                    start = 14.dp,
+                                    end = 14.dp,
+                                    top = 10.dp,
+                                    bottom = 12.dp
                                 ),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
