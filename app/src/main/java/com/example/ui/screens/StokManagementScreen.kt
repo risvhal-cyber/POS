@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -21,10 +22,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,6 +69,19 @@ fun StokManagementScreen(
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val hideKeyboardNestedScroll = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && kotlin.math.abs(available.y) > 4f) {
+                    focusManager.clearFocus(force = true)
+                    keyboardController?.hide()
+                }
+                return Offset.Zero
+            }
+        }
+    }
 
     val criticalItems = stockItems.filter { it.isCritical }
     val routineItems = stockItems.filter { !it.isCritical }
@@ -179,20 +202,35 @@ fun StokManagementScreen(
                                     value = searchQuery,
                                     onValueChange = { searchQuery = it },
                                     singleLine = true,
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                    keyboardActions = KeyboardActions(
+                                        onSearch = {
+                                            focusManager.clearFocus()
+                                            keyboardController?.hide()
+                                        }
+                                    ),
                                     textStyle = MaterialTheme.typography.bodyMedium.copy(color = OnSurface),
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(
-                                    onClick = { searchQuery = "" },
+                                    onClick = {
+                                        searchQuery = ""
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                    },
                                     modifier = Modifier.size(32.dp)
                                 ) {
                                     Icon(Icons.Default.Close, contentDescription = "Reset", modifier = Modifier.size(18.dp))
                                 }
                             }
                             Surface(
-                                onClick = { viewModel.navigateTo(ScreenRoute.WholesaleCalculator(openScanSheet = true)) },
+                                onClick = {
+                                    focusManager.clearFocus()
+                                    keyboardController?.hide()
+                                    viewModel.navigateTo(ScreenRoute.WholesaleCalculator(openScanSheet = true))
+                                },
                                 shape = RoundedCornerShape(10.dp),
                                 color = SurfaceContainerHigh,
                                 modifier = Modifier.size(44.dp)
@@ -771,6 +809,32 @@ fun StokManagementScreen(
         var hargaKulakText by remember(initialTarget) { mutableStateOf((initialTarget?.wholesalePrice ?: 14500L).toString()) }
         var hargaJualText by remember(initialTarget) { mutableStateOf((initialTarget?.sellingPrice ?: 16500L).toString()) }
         var supplierText by remember(initialTarget) { mutableStateOf(initialTarget?.supplier ?: "Agen Sembako Barokah") }
+        var isAnyTextFieldFocused by remember { mutableStateOf(false) }
+
+        val modalFocusManager = LocalFocusManager.current
+        val modalKeyboardController = LocalSoftwareKeyboardController.current
+
+        fun dismissKeyboard() {
+            isAnyTextFieldFocused = false
+            modalFocusManager.clearFocus(force = true)
+            modalKeyboardController?.hide()
+        }
+
+        // Pastikan keyboard tertutup saat modal pertama dibuka agar navigasi leluasa
+        LaunchedEffect(Unit) {
+            dismissKeyboard()
+        }
+
+        val modalScrollHideKeyboard = remember {
+            object : NestedScrollConnection {
+                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    if (source == NestedScrollSource.UserInput && kotlin.math.abs(available.y) > 4f) {
+                        dismissKeyboard()
+                    }
+                    return Offset.Zero
+                }
+            }
+        }
 
         // Smart Add Detection: sinkron otomatis dengan daftar barang yang ada
         val smartMatchedStock = remember(itemName, stockItems) {
@@ -798,7 +862,8 @@ fun StokManagementScreen(
             }
         }
 
-        fun applySmartSyncItem(stk: StockItem) {
+        fun applySmartSyncItem(stk: StockItem, hideKb: Boolean = true) {
+            if (hideKb) dismissKeyboard()
             itemName = stk.name
             selectedCat = stk.category
             unitText = stk.unit
@@ -815,24 +880,31 @@ fun StokManagementScreen(
         val methodLabels = listOf("Kulakan Baru", "Koreksi Opname", "Retur Masuk")
 
         Dialog(
-            onDismissRequest = { showAddManualStockSheet = false },
+            onDismissRequest = {
+                dismissKeyboard()
+                showAddManualStockSheet = false
+            },
             properties = DialogProperties(
                 usePlatformDefaultWidth = false,
-                decorFitsSystemWindows = false
+                decorFitsSystemWindows = true
             )
         ) {
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        dismissKeyboard()
+                    }
                     .testTag("modal_catat_barang_masuk_fullscreen"),
                 color = MaterialTheme.colorScheme.surface
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .statusBarsPadding()
-                        .navigationBarsPadding()
-                        .imePadding()
+                        .systemBarsPadding()
                 ) {
                     // Sticky Top Bar Modal Layar Penuh
                     Surface(
@@ -843,7 +915,7 @@ fun StokManagementScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -853,7 +925,10 @@ fun StokManagementScreen(
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Surface(
-                                    onClick = { showAddManualStockSheet = false },
+                                    onClick = {
+                                        dismissKeyboard()
+                                        showAddManualStockSheet = false
+                                    },
                                     shape = RoundedCornerShape(10.dp),
                                     color = SurfaceContainerHigh,
                                     modifier = Modifier.size(40.dp)
@@ -894,17 +969,44 @@ fun StokManagementScreen(
                                     )
                                 }
                             }
+
+                            if (isAnyTextFieldFocused) {
+                                Surface(
+                                    onClick = { dismissKeyboard() },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = PrimaryFixed
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.KeyboardHide,
+                                            contentDescription = "Sembunyikan Keyboard",
+                                            tint = OnPrimaryFixed,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Text(
+                                            text = "Tutup Ketik",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = OnPrimaryFixed
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
 
-                    // Body Konten yang Dapat Di-scroll Penuh dengan Mudah
+                    // Body Konten yang Dapat Di-scroll Penuh dengan Mudah (Otomatis sembunyikan keyboard saat di-scroll)
                     Column(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
+                            .nestedScroll(modalScrollHideKeyboard)
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         // 1. Opsi Cari & Filter Kategori untuk Sinkronisasi Daftar Barang
                         Surface(
@@ -938,6 +1040,7 @@ fun StokManagementScreen(
                                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                             color = ErrorColor,
                                             modifier = Modifier.clickable {
+                                                dismissKeyboard()
                                                 modalSearchQuery = ""
                                                 modalCategoryFilter = "Semua"
                                             }
@@ -974,15 +1077,18 @@ fun StokManagementScreen(
                                                     modalSearchQuery = query
                                                     val autoMatch = stockItems.find { it.name.contains(query, ignoreCase = true) }
                                                     if (query.length >= 3 && autoMatch != null) {
-                                                        applySmartSyncItem(autoMatch)
+                                                        applySmartSyncItem(autoMatch, hideKb = false)
                                                     } else if (query.isNotBlank() && autoMatch == null) {
                                                         itemName = query
                                                     }
                                                 },
                                                 singleLine = true,
+                                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                                keyboardActions = KeyboardActions(onSearch = { dismissKeyboard() }, onDone = { dismissKeyboard() }),
                                                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = OnSurface),
                                                 modifier = Modifier
                                                     .fillMaxWidth()
+                                                    .onFocusChanged { if (it.isFocused) isAnyTextFieldFocused = true }
                                                     .testTag("modal_kulakan_search_input")
                                             )
                                         }
@@ -993,7 +1099,10 @@ fun StokManagementScreen(
                                                 tint = OnSurfaceVariant,
                                                 modifier = Modifier
                                                     .size(18.dp)
-                                                    .clickable { modalSearchQuery = "" }
+                                                    .clickable {
+                                                        modalSearchQuery = ""
+                                                        dismissKeyboard()
+                                                    }
                                             )
                                         }
                                     }
@@ -1011,6 +1120,7 @@ fun StokManagementScreen(
                                         val isCatSelected = modalCategoryFilter.equals(cat, ignoreCase = true)
                                         Surface(
                                             onClick = {
+                                                dismissKeyboard()
                                                 modalCategoryFilter = cat
                                                 if (cat != "Semua") {
                                                     selectedCat = cat
@@ -1033,6 +1143,7 @@ fun StokManagementScreen(
                                 if (filteredModalStockList.isEmpty()) {
                                     Surface(
                                         onClick = {
+                                            dismissKeyboard()
                                             if (modalSearchQuery.isNotBlank()) {
                                                 itemName = modalSearchQuery
                                                 if (modalCategoryFilter != "Semua") selectedCat = modalCategoryFilter
@@ -1082,7 +1193,7 @@ fun StokManagementScreen(
                                         filteredModalStockList.forEach { stk ->
                                             val isSelected = stk.name.equals(itemName, ignoreCase = true)
                                             Surface(
-                                                onClick = { applySmartSyncItem(stk) },
+                                                onClick = { applySmartSyncItem(stk, hideKb = true) },
                                                 shape = RoundedCornerShape(10.dp),
                                                 color = if (isSelected) Primary else SurfaceContainerLowest,
                                                 shadowElevation = 1.dp
@@ -1167,7 +1278,7 @@ fun StokManagementScreen(
                                 }
                                 if (smartMatchedStock != null && !isExactMatch) {
                                     Surface(
-                                        onClick = { applySmartSyncItem(smartMatchedStock) },
+                                        onClick = { applySmartSyncItem(smartMatchedStock, hideKb = true) },
                                         shape = RoundedCornerShape(6.dp),
                                         color = Primary
                                     ) {
@@ -1193,19 +1304,27 @@ fun StokManagementScreen(
                                     itemName = typed
                                     val exact = stockItems.find { it.name.equals(typed.trim(), ignoreCase = true) }
                                     if (exact != null) {
-                                        applySmartSyncItem(exact)
+                                        applySmartSyncItem(exact, hideKb = false)
                                     }
                                 },
                                 label = { Text("Nama Barang Sembako") },
                                 singleLine = true,
-                                modifier = Modifier.weight(2f)
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { dismissKeyboard() }),
+                                modifier = Modifier
+                                    .weight(2f)
+                                    .onFocusChanged { if (it.isFocused) isAnyTextFieldFocused = true }
                             )
                             OutlinedTextField(
                                 value = unitText,
                                 onValueChange = { unitText = it },
                                 label = { Text("Satuan") },
                                 singleLine = true,
-                                modifier = Modifier.weight(1f)
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { dismissKeyboard() }),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .onFocusChanged { if (it.isFocused) isAnyTextFieldFocused = true }
                             )
                         }
 
@@ -1236,7 +1355,10 @@ fun StokManagementScreen(
                                 categories.forEach { catOption ->
                                     val isSelectedCat = selectedCat.equals(catOption, ignoreCase = true)
                                     Surface(
-                                        onClick = { selectedCat = catOption },
+                                        onClick = {
+                                            dismissKeyboard()
+                                            selectedCat = catOption
+                                        },
                                         shape = RoundedCornerShape(8.dp),
                                         color = if (isSelectedCat) Primary else SurfaceContainerHigh,
                                         modifier = Modifier.border(
@@ -1275,7 +1397,10 @@ fun StokManagementScreen(
                             methodLabels.forEachIndexed { idx, label ->
                                 val isSel = addMethod == idx
                                 Surface(
-                                    onClick = { addMethod = idx },
+                                    onClick = {
+                                        dismissKeyboard()
+                                        addMethod = idx
+                                    },
                                     shape = RoundedCornerShape(10.dp),
                                     color = if (isSel) PrimaryContainer else SurfaceContainerLowest,
                                     shadowElevation = 1.dp,
@@ -1312,7 +1437,10 @@ fun StokManagementScreen(
                                             .size(48.dp)
                                             .clip(RoundedCornerShape(10.dp))
                                             .background(SurfaceContainerLowest)
-                                            .clickable { if (qtyMasuk > 1) qtyMasuk-- },
+                                            .clickable {
+                                                dismissKeyboard()
+                                                if (qtyMasuk > 1) qtyMasuk--
+                                            },
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text("−", style = MaterialTheme.typography.headlineMedium)
@@ -1334,7 +1462,10 @@ fun StokManagementScreen(
                                             .size(48.dp)
                                             .clip(RoundedCornerShape(10.dp))
                                             .background(PrimaryContainer)
-                                            .clickable { qtyMasuk++ },
+                                            .clickable {
+                                                dismissKeyboard()
+                                                qtyMasuk++
+                                            },
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text("+", style = MaterialTheme.typography.headlineMedium, color = Color.White)
@@ -1354,7 +1485,10 @@ fun StokManagementScreen(
                                         Pair("+2 $packPresetName (${packPresetQty * 2})", packPresetQty * 2)
                                     ).forEach { (lbl, q) ->
                                         Surface(
-                                            onClick = { qtyMasuk = q },
+                                            onClick = {
+                                                dismissKeyboard()
+                                                qtyMasuk = q
+                                            },
                                             shape = RoundedCornerShape(8.dp),
                                             color = if (qtyMasuk == q) PrimaryFixed else SurfaceContainerHigh,
                                             modifier = Modifier.weight(1f).height(36.dp)
@@ -1391,17 +1525,29 @@ fun StokManagementScreen(
                                     }
                                 },
                                 label = { Text("Modal Kulak / $unitText") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(onDone = { dismissKeyboard() }),
                                 singleLine = true,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .onFocusChanged { if (it.isFocused) isAnyTextFieldFocused = true }
                             )
                             OutlinedTextField(
                                 value = hargaJualText,
                                 onValueChange = { hargaJualText = it.filter { c -> c.isDigit() } },
                                 label = { Text("Harga Jual Kasir") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(onDone = { dismissKeyboard() }),
                                 singleLine = true,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .onFocusChanged { if (it.isFocused) isAnyTextFieldFocused = true }
                             )
                         }
 
@@ -1410,20 +1556,32 @@ fun StokManagementScreen(
                             onValueChange = { supplierText = it },
                             label = { Text("Nama Agen / Supplier Grosir") },
                             singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { dismissKeyboard() }),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onFocusChanged { if (it.isFocused) isAnyTextFieldFocused = true }
                         )
+
+                        Spacer(modifier = Modifier.height(12.dp))
                     }
 
-                    // Sticky Bottom Bar (Ringkasan Total Kulakan & Tombol Simpan)
+                    // Sticky Bottom Bar (Dinaikkan agar tidak menutupi / mengganggu bar navigasi HP)
                     Surface(
                         color = MaterialTheme.colorScheme.surface,
-                        shadowElevation = 10.dp,
+                        shadowElevation = 14.dp,
+                        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                .padding(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    top = 12.dp,
+                                    bottom = 24.dp // Jarak aman dari gesture / tombol navigasi bawah HP
+                                ),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Surface(
@@ -1432,7 +1590,7 @@ fun StokManagementScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -1453,6 +1611,7 @@ fun StokManagementScreen(
 
                             Button(
                                 onClick = {
+                                    dismissKeyboard()
                                     val targetName = smartMatchedStock?.name ?: itemName.ifBlank { "Barang Sembako Baru" }
                                     viewModel.addManualStock(
                                         name = targetName,
@@ -1468,7 +1627,7 @@ fun StokManagementScreen(
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(52.dp)
+                                    .height(50.dp)
                                     .testTag("btn_simpan_stok_masuk_fullscreen"),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryContainer)

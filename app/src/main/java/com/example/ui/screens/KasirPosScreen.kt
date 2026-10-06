@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -20,9 +21,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,6 +58,20 @@ fun KasirPosScreen(
     var showQuickManualModal by remember { mutableStateOf(false) }
     var showKasbonDialog by remember { mutableStateOf(false) }
     var showBarcodeScannerSheet by remember { mutableStateOf(false) }
+
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val hideKeyboardNestedScroll = remember(focusManager, keyboardController) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && kotlin.math.abs(available.y) > 4f) {
+                    focusManager.clearFocus(force = true)
+                    keyboardController?.hide()
+                }
+                return Offset.Zero
+            }
+        }
+    }
 
     val totalBelanja = cartItems.sumOf { it.subtotal }
     val totalQty = cartItems.sumOf { Math.ceil(it.qty).toInt() }
@@ -219,6 +241,13 @@ fun KasirPosScreen(
                                     value = searchQuery,
                                     onValueChange = { searchQuery = it },
                                     singleLine = true,
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                    keyboardActions = KeyboardActions(
+                                        onSearch = {
+                                            focusManager.clearFocus()
+                                            keyboardController?.hide()
+                                        }
+                                    ),
                                     textStyle = MaterialTheme.typography.bodyMedium.copy(
                                         color = MaterialTheme.colorScheme.onSurface
                                     ),
@@ -229,7 +258,11 @@ fun KasirPosScreen(
                             }
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(
-                                    onClick = { searchQuery = "" },
+                                    onClick = {
+                                        searchQuery = ""
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                    },
                                     modifier = Modifier.size(32.dp)
                                 ) {
                                     Icon(
@@ -242,6 +275,8 @@ fun KasirPosScreen(
                             }
                             Button(
                                 onClick = {
+                                    focusManager.clearFocus()
+                                    keyboardController?.hide()
                                     showBarcodeScannerSheet = true
                                 },
                                 shape = RoundedCornerShape(10.dp),
@@ -289,6 +324,8 @@ fun KasirPosScreen(
                             val isSelected = selectedCategory == catName
                             Surface(
                                 onClick = {
+                                    focusManager.clearFocus()
+                                    keyboardController?.hide()
                                     selectedCategory = catName
                                 },
                                 shape = RoundedCornerShape(50),
@@ -320,7 +357,11 @@ fun KasirPosScreen(
             }
 
             // Main Scrollable Product List + Sticky Bottom Total Belanja
-            Box(modifier = Modifier.weight(1f)) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .nestedScroll(hideKeyboardNestedScroll)
+            ) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(top = 6.dp, bottom = 196.dp)
@@ -1097,6 +1138,20 @@ private fun PosCheckoutBarcodeScannerSheet(
     var manualBarcodeQuery by remember { mutableStateOf("") }
     var flashOn by remember { mutableStateOf(false) }
 
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val hideKeyboardNestedScroll = remember(focusManager, keyboardController) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && kotlin.math.abs(available.y) > 4f) {
+                    focusManager.clearFocus(force = true)
+                    keyboardController?.hide()
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
     val matchingBarcodeItems = remember(manualBarcodeQuery, catalog) {
         if (manualBarcodeQuery.isBlank()) catalog
         else catalog.filter {
@@ -1334,6 +1389,26 @@ private fun PosCheckoutBarcodeScannerSheet(
                         onValueChange = { manualBarcodeQuery = it },
                         label = { Text("Cari nama produk atau ketik kode barcode...") },
                         leadingIcon = { Icon(Icons.Outlined.QrCode, contentDescription = null) },
+                        trailingIcon = {
+                            if (manualBarcodeQuery.isNotEmpty()) {
+                                IconButton(
+                                    onClick = {
+                                        manualBarcodeQuery = ""
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                    }
+                                ) {
+                                    Icon(Icons.Default.Close, contentDescription = "Reset")
+                                }
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(
+                            onSearch = {
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
+                            }
+                        ),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -1357,7 +1432,9 @@ private fun PosCheckoutBarcodeScannerSheet(
 
                 // Scrollable Product List inside Scanner Modal
                 LazyColumn(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .nestedScroll(hideKeyboardNestedScroll),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -1368,6 +1445,8 @@ private fun PosCheckoutBarcodeScannerSheet(
                             .sumOf { it.qty.toInt() }
                         Surface(
                             onClick = {
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
                                 selectedScannedItem = item
                                 onScanAdd(item)
                             },
