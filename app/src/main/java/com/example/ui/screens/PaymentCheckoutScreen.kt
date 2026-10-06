@@ -124,279 +124,280 @@ fun PaymentCheckoutScreen(
             }
         }
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.navigationBars),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // 1. Bill Header Summary Card
-            item {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = SurfaceContainerLowest,
-                    shadowElevation = 1.dp,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+        // Scrollable Payment Content + Sticky Bottom Complete Transaction Bar
+        Box(modifier = Modifier.weight(1f)) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 156.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // 1. Bill Header Summary Card
+                item {
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = SurfaceContainerLowest,
+                        shadowElevation = 1.dp,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(28.dp)
-                                        .clip(CircleShape)
-                                        .background(SurfaceContainerHigh),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = Primary, modifier = Modifier.size(16.dp))
-                                }
-                                Text(
-                                    text = "#KLT-20250524-0042",
-                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                                    color = OnSurfaceVariant
-                                )
-                            }
-                            Surface(
-                                shape = RoundedCornerShape(50),
-                                color = SurfaceContainer
-                            ) {
-                                Text(
-                                    text = "${cartItems.size.coerceAtLeast(4)} ITEM BELANJA",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
-
-                        Column {
-                            Text("Total Tagihan Belanja", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Bottom
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = formatRupiah(billAmount),
-                                    style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.ExtraBold),
-                                    color = OnSurface
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .clip(CircleShape)
+                                            .background(SurfaceContainerHigh),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = Primary, modifier = Modifier.size(16.dp))
+                                    }
+                                    Text(
+                                        text = "#KLT-20250524-0042",
+                                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                                        color = OnSurfaceVariant
+                                    )
+                                }
                                 Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = PrimaryContainer.copy(alpha = 0.12f)
+                                    shape = RoundedCornerShape(50),
+                                    color = SurfaceContainer
                                 ) {
                                     Text(
-                                        text = "Lunas saat bayar",
-                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = Primary,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        text = "${cartItems.size.coerceAtLeast(4)} ITEM BELANJA",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                     )
                                 }
                             }
-                        }
 
-                        // Payment Methods Selector
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            PaymentMethodChip(
-                                label = "Tunai (Cash)",
-                                icon = Icons.Outlined.Payments,
-                                selected = selectedMethod == PaymentMethod.TUNAI,
-                                onClick = {
-                                    selectedMethod = PaymentMethod.TUNAI
-                                    currentTendered = 100000L
+                            Column {
+                                Text("Total Tagihan Belanja", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.Bottom
+                                ) {
+                                    Text(
+                                        text = formatRupiah(billAmount),
+                                        style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                        color = OnSurface
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = PrimaryContainer.copy(alpha = 0.12f)
+                                    ) {
+                                        Text(
+                                            text = "Lunas saat bayar",
+                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = Primary,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
                                 }
-                            )
-                            PaymentMethodChip(
-                                label = "QRIS Toko",
-                                icon = Icons.Outlined.QrCode2,
-                                selected = selectedMethod == PaymentMethod.QRIS,
-                                onClick = {
-                                    selectedMethod = PaymentMethod.QRIS
-                                    currentTendered = billAmount
-                                    viewModel.showToast("Mode QRIS: Nominal diatur sesuai total tagihan")
-                                }
-                            )
-                            PaymentMethodChip(
-                                label = "Kasbon / Hutang",
-                                icon = Icons.Outlined.MenuBook,
-                                selected = selectedMethod == PaymentMethod.KASBON,
-                                onClick = {
-                                    selectedMethod = PaymentMethod.KASBON
-                                    currentTendered = 0L
-                                    viewModel.showToast("Mode Kasbon: Tagihan masuk buku piutang")
-                                }
-                            )
+                            }
+
+                            // Payment Methods Selector
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                PaymentMethodChip(
+                                    label = "Tunai (Cash)",
+                                    icon = Icons.Outlined.Payments,
+                                    selected = selectedMethod == PaymentMethod.TUNAI,
+                                    onClick = {
+                                        selectedMethod = PaymentMethod.TUNAI
+                                        currentTendered = 100000L
+                                    }
+                                )
+                                PaymentMethodChip(
+                                    label = "QRIS Toko",
+                                    icon = Icons.Outlined.QrCode2,
+                                    selected = selectedMethod == PaymentMethod.QRIS,
+                                    onClick = {
+                                        selectedMethod = PaymentMethod.QRIS
+                                        currentTendered = billAmount
+                                        viewModel.showToast("Mode QRIS: Nominal diatur sesuai total tagihan")
+                                    }
+                                )
+                                PaymentMethodChip(
+                                    label = "Kasbon / Hutang",
+                                    icon = Icons.Outlined.MenuBook,
+                                    selected = selectedMethod == PaymentMethod.KASBON,
+                                    onClick = {
+                                        selectedMethod = PaymentMethod.KASBON
+                                        currentTendered = 0L
+                                        viewModel.showToast("Mode Kasbon: Tagihan masuk buku piutang")
+                                    }
+                                )
+                            }
                         }
                     }
                 }
-            }
 
-            // 2. Cash Input & Tendered Display + Keypad
-            item {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = SurfaceContainerLowest,
-                    shadowElevation = 1.dp,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                // 2. Cash Input & Tendered Display + Keypad
+                item {
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = SurfaceContainerLowest,
+                        shadowElevation = 1.dp,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Text(
-                                text = "UANG DITERIMA PELANGGAN",
-                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                color = OnSurfaceVariant
-                            )
-                            Box(
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "UANG DITERIMA PELANGGAN",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = OnSurfaceVariant
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(SurfaceContainer)
+                                        .clickable { handleBackspace() }
+                                        .testTag("payment_backspace_btn"),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Outlined.Backspace, contentDescription = "Hapus digit", modifier = Modifier.size(20.dp))
+                                }
+                            }
+
+                            // Large Tendered Display
+                            Row(
                                 modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(SurfaceContainer)
-                                    .clickable { handleBackspace() }
-                                    .testTag("payment_backspace_btn"),
-                                contentAlignment = Alignment.Center
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(SurfaceContainerLow)
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Outlined.Backspace, contentDescription = "Hapus digit", modifier = Modifier.size(20.dp))
-                            }
-                        }
-
-                        // Large Tendered Display
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(SurfaceContainerLow)
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Rp",
-                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                color = OnSurfaceVariant
-                            )
-                            Text(
-                                text = formatNumberOnly(currentTendered),
-                                style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.ExtraBold),
-                                color = OnSurface
-                            )
-                        }
-
-                        // Quick Fast Cash Chips (2x3 Grid)
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Surface(
-                                    onClick = { currentTendered = billAmount },
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = SurfaceContainerLow,
-                                    modifier = Modifier.weight(1f).height(44.dp)
-                                ) {
-                                    Column(
-                                        modifier = Modifier.fillMaxSize(),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center
-                                    ) {
-                                        Text("Uang Pas", style = MaterialTheme.typography.labelSmall, color = OnSurfaceVariant)
-                                        Text(formatNumberOnly(billAmount), style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = Primary)
-                                    }
-                                }
-                                FastCashButton(
-                                    label = "70.000",
-                                    isSelected = currentTendered == 70000L,
-                                    onClick = { currentTendered = 70000L },
-                                    modifier = Modifier.weight(1f)
+                                Text(
+                                    text = "Rp",
+                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                    color = OnSurfaceVariant
                                 )
-                                FastCashButton(
-                                    label = "100.000",
-                                    isSelected = currentTendered == 100000L,
-                                    onClick = { currentTendered = 100000L },
-                                    modifier = Modifier.weight(1f)
+                                Text(
+                                    text = formatNumberOnly(currentTendered),
+                                    style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.ExtraBold),
+                                    color = OnSurface
                                 )
                             }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                FastCashButton(
-                                    label = "150.000",
-                                    isSelected = currentTendered == 150000L,
-                                    onClick = { currentTendered = 150000L },
-                                    modifier = Modifier.weight(1f)
-                                )
-                                FastCashButton(
-                                    label = "200.000",
-                                    isSelected = currentTendered == 200000L,
-                                    onClick = { currentTendered = 200000L },
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Surface(
-                                    onClick = { currentTendered = 0L },
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = ErrorContainer,
-                                    modifier = Modifier.weight(1f).height(44.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text("Reset (C)", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = OnErrorContainer)
-                                    }
-                                }
-                            }
-                        }
 
-                        // Numeric Keypad (4x3 Grid)
-                        val rows = listOf(
-                            listOf("1", "2", "3"),
-                            listOf("4", "5", "6"),
-                            listOf("7", "8", "9"),
-                            listOf("00", "0", ".000")
-                        )
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            rows.forEach { rowKeys ->
+                            // Quick Fast Cash Chips (2x3 Grid)
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    rowKeys.forEach { key ->
-                                        val isSpecial = key == "00" || key == ".000"
-                                        Surface(
-                                            onClick = {
-                                                pressDigit(if (key == ".000") "000" else key)
-                                            },
-                                            shape = RoundedCornerShape(10.dp),
-                                            color = if (isSpecial) SurfaceContainer else SurfaceContainerLow,
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .height(54.dp)
+                                    Surface(
+                                        onClick = { currentTendered = billAmount },
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = SurfaceContainerLow,
+                                        modifier = Modifier.weight(1f).height(44.dp)
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.fillMaxSize(),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center
                                         ) {
-                                            Box(contentAlignment = Alignment.Center) {
-                                                Text(
-                                                    text = key,
-                                                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                                                    color = OnSurface
-                                                )
+                                            Text("Uang Pas", style = MaterialTheme.typography.labelSmall, color = OnSurfaceVariant)
+                                            Text(formatNumberOnly(billAmount), style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = Primary)
+                                        }
+                                    }
+                                    FastCashButton(
+                                        label = "70.000",
+                                        isSelected = currentTendered == 70000L,
+                                        onClick = { currentTendered = 70000L },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    FastCashButton(
+                                        label = "100.000",
+                                        isSelected = currentTendered == 100000L,
+                                        onClick = { currentTendered = 100000L },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    FastCashButton(
+                                        label = "150.000",
+                                        isSelected = currentTendered == 150000L,
+                                        onClick = { currentTendered = 150000L },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    FastCashButton(
+                                        label = "200.000",
+                                        isSelected = currentTendered == 200000L,
+                                        onClick = { currentTendered = 200000L },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Surface(
+                                        onClick = { currentTendered = 0L },
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = ErrorContainer,
+                                        modifier = Modifier.weight(1f).height(44.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text("Reset (C)", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = OnErrorContainer)
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Numeric Keypad (4x3 Grid)
+                            val rows = listOf(
+                                listOf("1", "2", "3"),
+                                listOf("4", "5", "6"),
+                                listOf("7", "8", "9"),
+                                listOf("00", "0", ".000")
+                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                rows.forEach { rowKeys ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        rowKeys.forEach { key ->
+                                            val isSpecial = key == "00" || key == ".000"
+                                            Surface(
+                                                onClick = {
+                                                    pressDigit(if (key == ".000") "000" else key)
+                                                },
+                                                shape = RoundedCornerShape(10.dp),
+                                                color = if (isSpecial) SurfaceContainer else SurfaceContainerLow,
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .height(54.dp)
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Text(
+                                                        text = key,
+                                                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                                                        color = OnSurface
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -405,226 +406,239 @@ fun PaymentCheckoutScreen(
                         }
                     }
                 }
-            }
 
-            // 3. Automatic Change Indicator Card
-            item {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = if (isEnough) PrimaryContainer else ErrorContainer,
-                    shadowElevation = 4.dp,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    val contentColor = if (isEnough) Color.White else OnErrorContainer
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                // 3. Automatic Change Indicator Card
+                item {
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (isEnough) PrimaryContainer else ErrorContainer,
+                        shadowElevation = 4.dp,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(Icons.Outlined.PriceCheck, contentDescription = null, tint = contentColor, modifier = Modifier.size(22.dp))
-                                Text("UANG KEMBALIAN", style = MaterialTheme.typography.labelLarge, color = contentColor)
-                            }
-                            Surface(
-                                shape = RoundedCornerShape(50),
-                                color = if (isEnough) Color.White.copy(alpha = 0.2f) else ErrorColor
-                            ) {
-                                Text(
-                                    text = when {
-                                        diff == 0L -> "Uang Pas"
-                                        diff > 0L -> "Uang Cukup"
-                                        else -> "Kurang Bayar"
-                                    },
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            Text(
-                                text = if (isEnough) formatRupiah(diff) else "- ${formatRupiah(Math.abs(diff))}",
-                                style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.ExtraBold),
-                                color = contentColor
-                            )
-                            Text(
-                                text = "Tunai Kasir",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = contentColor.copy(alpha = 0.9f)
-                            )
-                        }
-
-                        // Smart Cash Drawer Recommendation Breakdown
+                        val contentColor = if (isEnough) Color.White else OnErrorContainer
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(Color.Black.copy(alpha = 0.15f))
-                                .padding(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Outlined.PointOfSale, contentDescription = null, tint = contentColor, modifier = Modifier.size(16.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(Icons.Outlined.PriceCheck, contentDescription = null, tint = contentColor, modifier = Modifier.size(22.dp))
+                                    Text("UANG KEMBALIAN", style = MaterialTheme.typography.labelLarge, color = contentColor)
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(50),
+                                    color = if (isEnough) Color.White.copy(alpha = 0.2f) else ErrorColor
+                                ) {
+                                    Text(
+                                        text = when {
+                                            diff == 0L -> "Uang Pas"
+                                            diff > 0L -> "Uang Cukup"
+                                            else -> "Kurang Bayar"
+                                        },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Bottom
+                            ) {
                                 Text(
-                                    text = "Panduan Ambil Uang Laci Kasir:",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    text = if (isEnough) formatRupiah(diff) else "- ${formatRupiah(Math.abs(diff))}",
+                                    style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.ExtraBold),
                                     color = contentColor
+                                )
+                                Text(
+                                    text = "Tunai Kasir",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = contentColor.copy(alpha = 0.9f)
                                 )
                             }
-                            if (diff == 0L) {
-                                Text(
-                                    text = "Tidak ada kembalian (Uang Pas)",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = contentColor
-                                )
-                            } else if (diff > 0L) {
-                                FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+
+                            // Smart Cash Drawer Recommendation Breakdown
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color.Black.copy(alpha = 0.15f))
+                                    .padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    drawerBreakdown.forEach { piece ->
-                                        Surface(
-                                            shape = RoundedCornerShape(6.dp),
-                                            color = Color.White.copy(alpha = 0.22f)
-                                        ) {
-                                            Text(
-                                                text = piece,
-                                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                                                color = Color.White,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                            )
+                                    Icon(Icons.Outlined.PointOfSale, contentDescription = null, tint = contentColor, modifier = Modifier.size(16.dp))
+                                    Text(
+                                        text = "Panduan Ambil Uang Laci Kasir:",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                        color = contentColor
+                                    )
+                                }
+                                if (diff == 0L) {
+                                    Text(
+                                        text = "Tidak ada kembalian (Uang Pas)",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = contentColor
+                                    )
+                                } else if (diff > 0L) {
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        drawerBreakdown.forEach { piece ->
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = Color.White.copy(alpha = 0.22f)
+                                            ) {
+                                                Text(
+                                                    text = piece,
+                                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                                                    color = Color.White,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                                )
+                                            }
                                         }
                                     }
+                                } else {
+                                    Text(
+                                        text = "Terdapat kekurangan pembayaran sebesar ${formatRupiah(Math.abs(diff))}. Tawarkan catat kasbon.",
+                                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                        color = contentColor
+                                    )
                                 }
-                            } else {
-                                Text(
-                                    text = "Terdapat kekurangan pembayaran sebesar ${formatRupiah(Math.abs(diff))}. Tawarkan catat kasbon.",
-                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                                    color = contentColor
-                                )
                             }
                         }
                     }
                 }
-            }
 
-            // 4. Customer & Receipt Settings
-            item {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = SurfaceContainerLowest,
-                    shadowElevation = 1.dp,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                // 4. Customer & Receipt Settings
+                item {
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = SurfaceContainerLowest,
+                        shadowElevation = 1.dp,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(SurfaceContainerLow)
-                                .padding(10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(SurfaceContainerLow)
+                                    .padding(10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(SecondaryContainer),
-                                    contentAlignment = Alignment.Center
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    Icon(Icons.Outlined.Person, contentDescription = null, tint = OnSecondaryContainer)
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(SecondaryContainer),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Outlined.Person, contentDescription = null, tint = OnSecondaryContainer)
+                                    }
+                                    Column {
+                                        Text(customerName, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                                        Text("Sisa Kasbon Lalu: Rp 0", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+                                    }
                                 }
-                                Column {
-                                    Text(customerName, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
-                                    Text("Sisa Kasbon Lalu: Rp 0", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+                                Surface(
+                                    onClick = { viewModel.navigateTo(ScreenRoute.CustomerDirectory) },
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = SurfaceContainer
+                                ) {
+                                    Text(
+                                        text = "Ganti",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                    )
                                 }
                             }
-                            Surface(
-                                onClick = { viewModel.navigateTo(ScreenRoute.CustomerDirectory) },
-                                shape = RoundedCornerShape(6.dp),
-                                color = SurfaceContainer
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = "Ganti",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Icon(Icons.Outlined.Print, contentDescription = null, tint = OnSurfaceVariant)
+                                    Column {
+                                        Text("Cetak Struk Thermal", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                                        Text("Printer Bluetooth 58mm Aktif", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+                                    }
+                                }
+                                Checkbox(
+                                    checked = printThermal,
+                                    onCheckedChange = { printThermal = it },
+                                    colors = CheckboxDefaults.colors(checkedColor = Primary)
                                 )
                             }
-                        }
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Outlined.Print, contentDescription = null, tint = OnSurfaceVariant)
-                                Column {
-                                    Text("Cetak Struk Thermal", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-                                    Text("Printer Bluetooth 58mm Aktif", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Icon(Icons.Outlined.Chat, contentDescription = null, tint = OnSurfaceVariant)
+                                    Column {
+                                        Text("Kirim Nota ke WhatsApp", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                                        Text("+62 812-3490-8812", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+                                    }
                                 }
+                                Checkbox(
+                                    checked = sendWhatsapp,
+                                    onCheckedChange = { sendWhatsapp = it },
+                                    colors = CheckboxDefaults.colors(checkedColor = Primary)
+                                )
                             }
-                            Checkbox(
-                                checked = printThermal,
-                                onCheckedChange = { printThermal = it },
-                                colors = CheckboxDefaults.colors(checkedColor = Primary)
-                            )
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Icon(Icons.Outlined.Chat, contentDescription = null, tint = OnSurfaceVariant)
-                                Column {
-                                    Text("Kirim Nota ke WhatsApp", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-                                    Text("+62 812-3490-8812", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
-                                }
-                            }
-                            Checkbox(
-                                checked = sendWhatsapp,
-                                onCheckedChange = { sendWhatsapp = it },
-                                colors = CheckboxDefaults.colors(checkedColor = Primary)
-                            )
                         }
                     }
                 }
             }
 
-            // 5. Complete Buttons
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // 5. Sticky Bottom Complete Transaction Bar (Always Visible on Scroll)
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+                color = SurfaceContainerLowest.copy(alpha = 0.98f),
+                shadowElevation = 18.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.navigationBars)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Surface(
                         onClick = {
                             if (currentTendered < billAmount && selectedMethod != PaymentMethod.KASBON) {

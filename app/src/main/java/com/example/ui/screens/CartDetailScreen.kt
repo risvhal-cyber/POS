@@ -124,16 +124,74 @@ fun CartDetailScreen(
                 }
             }
 
+            // Sticky Action Bar: Scan / Pilih Barang, Manual Rp & Diskon (Always Visible on Scroll)
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 3.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Surface(
+                        onClick = { showPosScannerSheet = true },
+                        shape = RoundedCornerShape(10.dp),
+                        color = PrimaryFixed
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, tint = OnPrimaryFixed, modifier = Modifier.size(18.dp))
+                            Text("+ Scan / Cari Barang", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = OnPrimaryFixed)
+                        }
+                    }
+                    Surface(
+                        onClick = { viewModel.navigateTo(ScreenRoute.ManualInput(initialTab = 1)) },
+                        shape = RoundedCornerShape(10.dp),
+                        color = SurfaceContainerHigh
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(Icons.Outlined.AddCircleOutline, contentDescription = null, tint = OnSurface, modifier = Modifier.size(18.dp))
+                            Text("+ Manual Rp", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = OnSurface)
+                        }
+                    }
+                    Surface(
+                        onClick = { viewModel.toggleDiscount() },
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (activeDiscount > 0L) PrimaryFixed else SurfaceContainerHigh
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(Icons.Outlined.Loyalty, contentDescription = null, tint = if (activeDiscount > 0L) OnPrimaryFixed else OnSurface, modifier = Modifier.size(18.dp))
+                            Text("Kupon Diskon", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = if (activeDiscount > 0L) OnPrimaryFixed else OnSurface)
+                        }
+                    }
+                }
+            }
+
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(bottom = 170.dp)
+                contentPadding = PaddingValues(bottom = 176.dp)
             ) {
-                // Status Transaksi & Quick Action Chips
+                // Status Transaksi
                 item {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Surface(
@@ -181,56 +239,6 @@ fun CartDetailScreen(
                                         color = OnSurfaceVariant,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
-                                }
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Surface(
-                                onClick = { showPosScannerSheet = true },
-                                shape = RoundedCornerShape(10.dp),
-                                color = PrimaryFixed
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, tint = OnPrimaryFixed, modifier = Modifier.size(18.dp))
-                                    Text("+ Scan / Pilih Barang", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = OnPrimaryFixed)
-                                }
-                            }
-                            Surface(
-                                onClick = { viewModel.navigateTo(ScreenRoute.ManualInput(initialTab = 1)) },
-                                shape = RoundedCornerShape(10.dp),
-                                color = SurfaceContainerHigh
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Icon(Icons.Outlined.AddCircleOutline, contentDescription = null, tint = OnSurface, modifier = Modifier.size(18.dp))
-                                    Text("+ Manual Rp", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = OnSurface)
-                                }
-                            }
-                            Surface(
-                                onClick = { viewModel.toggleDiscount() },
-                                shape = RoundedCornerShape(10.dp),
-                                color = if (activeDiscount > 0L) PrimaryFixed else SurfaceContainerHigh
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Icon(Icons.Outlined.Loyalty, contentDescription = null, tint = if (activeDiscount > 0L) OnPrimaryFixed else OnSurface, modifier = Modifier.size(18.dp))
-                                    Text("Kupon Diskon", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = if (activeDiscount > 0L) OnPrimaryFixed else OnSurface)
                                 }
                             }
                         }
@@ -551,67 +559,146 @@ fun CartDetailScreen(
         }
 
         if (showPosScannerSheet) {
-            AlertDialog(
-                onDismissRequest = { showPosScannerSheet = false },
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, tint = Primary)
-                        Text("Scan / Pilih Barang Cepat", style = MaterialTheme.typography.headlineSmall)
-                    }
-                },
-                text = {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "Ketuk barang di bawah untuk memindai barcode & menambahkannya ke daftar belanja:",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = OnSurfaceVariant
-                        )
-                        viewModel.posCatalog.take(6).forEach { catItem ->
-                            Surface(
-                                onClick = {
-                                    viewModel.scanOrSelectCatalogItem(catItem, 1.0)
-                                },
-                                shape = RoundedCornerShape(10.dp),
-                                color = SurfaceContainerLow,
-                                modifier = Modifier.fillMaxWidth()
+            var modalQuery by remember { mutableStateOf("") }
+            val filteredCatalog = remember(modalQuery, viewModel.posCatalog) {
+                if (modalQuery.isBlank()) viewModel.posCatalog
+                else viewModel.posCatalog.filter {
+                    it.name.contains(modalQuery, ignoreCase = true) ||
+                        it.barcode.contains(modalQuery, ignoreCase = true)
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(InverseSurface.copy(alpha = 0.72f))
+                    .clickable { showPosScannerSheet = false },
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                    color = SurfaceContainerLowest,
+                    shadowElevation = 24.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.85f)
+                        .clickable(enabled = false) {}
+                ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Pinned Top Header + Search & Scan Input
+                        Surface(
+                            color = SurfaceContainerLowest,
+                            shadowElevation = 3.dp,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(10.dp),
+                                    modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(catItem.name, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold))
-                                        Text("${catItem.barcode} • ${formatRupiah(catItem.price)}/${catItem.unit}", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, tint = Primary)
+                                        Text("Scan / Cari Barang Cepat", style = MaterialTheme.typography.headlineSmall)
                                     }
-                                    Surface(shape = RoundedCornerShape(6.dp), color = Primary) {
-                                        Text(
-                                            text = "+ Tambah",
-                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                            color = Color.White,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
+                                    IconButton(onClick = { showPosScannerSheet = false }) {
+                                        Icon(Icons.Default.Close, contentDescription = "Tutup")
+                                    }
+                                }
+
+                                OutlinedTextField(
+                                    value = modalQuery,
+                                    onValueChange = { modalQuery = it },
+                                    label = { Text("Ketik nama barang / kode barcode...") },
+                                    leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+
+                        // Scrollable Item List
+                        LazyColumn(
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(filteredCatalog.size) { idx ->
+                                val catItem = filteredCatalog[idx]
+                                Surface(
+                                    onClick = {
+                                        viewModel.scanOrSelectCatalogItem(catItem, 1.0)
+                                    },
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = SurfaceContainerLow,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(catItem.name, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold))
+                                            Text("${catItem.barcode} • ${formatRupiah(catItem.price)}/${catItem.unit}", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
+                                        }
+                                        Surface(shape = RoundedCornerShape(6.dp), color = Primary) {
+                                            Text(
+                                                text = "+ Tambah",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                                color = Color.White,
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = { showPosScannerSheet = false },
-                        colors = ButtonDefaults.buttonColors(containerColor = Primary)
-                    ) {
-                        Text("Selesai Pilih")
+
+                        // Pinned Bottom Total Belanja & Selesaikan Transaksi Bar
+                        Surface(
+                            color = SurfaceContainerLowest,
+                            shadowElevation = 16.dp,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .windowInsetsPadding(WindowInsets.navigationBars)
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text("TOTAL BELANJA ($totalPcs PCS)", style = MaterialTheme.typography.labelSmall, color = OnSurfaceVariant)
+                                    Text(
+                                        text = formatRupiah(cleanTotal.let { if (it > 0) it else 64000L }),
+                                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                        color = Primary
+                                    )
+                                }
+                                Button(
+                                    onClick = {
+                                        showPosScannerSheet = false
+                                        viewModel.openPaymentWithPreset(if (cleanTotal > 0L) cleanTotal else 64000L)
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                                ) {
+                                    Text("Selesaikan Transaksi ➔", color = Color.White)
+                                }
+                            }
+                        }
                     }
                 }
-            )
+            }
         }
     }
 }

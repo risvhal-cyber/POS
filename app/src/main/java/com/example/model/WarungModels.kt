@@ -122,6 +122,24 @@ data class CurahPreset(
     val badge: String? = null
 )
 
+enum class StockMutationType(val label: String) {
+    KULAKAN_MASUK("Kulakan Masuk"),
+    TERJUAL_KASIR("Terjual Kasir"),
+    OPNAME_KOREKSI("Opname / Koreksi")
+}
+
+data class StockMutationLog(
+    val id: String,
+    val itemName: String,
+    val type: StockMutationType,
+    val qtyDelta: Double,
+    val unit: String,
+    val stockBefore: Double,
+    val stockAfter: Double,
+    val timeLabel: String,
+    val referenceNote: String
+)
+
 data class PosCatalogItem(
     val id: String,
     val barcode: String,

@@ -43,6 +43,7 @@ fun KasirPosScreen(
 ) {
     val cartItems by viewModel.cartItems.collectAsState()
     val storeName by viewModel.storeName.collectAsState()
+    val stockItems by viewModel.stockItems.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Semua") }
@@ -54,8 +55,35 @@ fun KasirPosScreen(
     val totalQty = cartItems.sumOf { Math.ceil(it.qty).toInt() }
     val jenisCount = cartItems.size
 
-    val filteredCatalog = remember(searchQuery, selectedCategory, viewModel.posCatalog) {
-        viewModel.posCatalog.filter { item ->
+    val livePosCatalog = remember(stockItems, viewModel.posCatalog) {
+        viewModel.posCatalog.map { cat ->
+            val matchedStock = stockItems.find { stk ->
+                val cName = cat.name.lowercase()
+                val sName = stk.name.lowercase()
+                cName.contains(sName.take(8)) || sName.contains(cName.take(8)) ||
+                    (cName.contains("beras") && sName.contains("beras")) ||
+                    (cName.contains("minyak") && sName.contains("minyak")) ||
+                    (cName.contains("indomie") && sName.contains("indomie")) ||
+                    (cName.contains("telur") && sName.contains("telur")) ||
+                    (cName.contains("gas") && sName.contains("gas")) ||
+                    (cName.contains("aqua") && sName.contains("aqua")) ||
+                    (cName.contains("gula") && sName.contains("gula")) ||
+                    (cName.contains("mild") && sName.contains("mild"))
+            }
+            if (matchedStock != null) {
+                val qtyStr = if (matchedStock.stockQty % 1.0 == 0.0) matchedStock.stockQty.toInt().toString() else matchedStock.stockQty.toString()
+                cat.copy(
+                    price = matchedStock.sellingPrice,
+                    stockLabel = "Stok: $qtyStr ${matchedStock.unit}"
+                )
+            } else {
+                cat
+            }
+        }
+    }
+
+    val filteredCatalog = remember(searchQuery, selectedCategory, livePosCatalog) {
+        livePosCatalog.filter { item ->
             val matchesCat = selectedCategory == "Semua" || item.category.equals(selectedCategory, ignoreCase = true)
             val matchesSearch = searchQuery.isBlank() ||
                 item.name.contains(searchQuery, ignoreCase = true) ||
@@ -139,18 +167,170 @@ fun KasirPosScreen(
                 }
             }
 
-            // Main Scrollable Content + Sticky Bottom Checkout
+            // Fixed Top Search & Scan Barcode Bar + Category Filter Pills (Always Visible on Scroll)
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 3.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 6.dp, bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 1. Search & Barcode Quick Field (Always Pinned)
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        color = SurfaceContainerLowest,
+                        shadowElevation = 2.dp
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Search,
+                                contentDescription = null,
+                                tint = OutlineColor,
+                                modifier = Modifier
+                                    .padding(horizontal = 8.dp)
+                                    .size(22.dp)
+                            )
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        text = "Ketik barang / barcode (cth: Indomie)...",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = OutlineColor,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                BasicTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    singleLine = true,
+                                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    ),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("kasir_search_input")
+                                )
+                            }
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { searchQuery = "" },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Hapus Pencarian",
+                                        tint = OutlineColor,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                            Button(
+                                onClick = {
+                                    showBarcodeScannerSheet = true
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Primary,
+                                    contentColor = Color.White
+                                ),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                                modifier = Modifier
+                                    .height(44.dp)
+                                    .testTag("btn_scan_barcode")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.QrCodeScanner,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Scan",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                                )
+                            }
+                        }
+                    }
+
+                    // 2. Filter Kategori Cepat (Horizontal Scrollable Pills - Pinned Below Search)
+                    val categories = listOf(
+                        Pair("Semua", Icons.Outlined.Dashboard),
+                        Pair("Sembako & Eceran", Icons.Outlined.Grain),
+                        Pair("Mie & Makanan", Icons.Outlined.RamenDining),
+                        Pair("Minuman Dingin", Icons.Outlined.AcUnit),
+                        Pair("Rokok", Icons.Outlined.SmokingRooms),
+                        Pair("Gas & Galon", Icons.Outlined.PropaneTank),
+                        Pair("Sabun & Bumbu", Icons.Outlined.CleaningServices)
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        categories.forEach { (catName, icon) ->
+                            val isSelected = selectedCategory == catName
+                            Surface(
+                                onClick = {
+                                    selectedCategory = catName
+                                },
+                                shape = RoundedCornerShape(50),
+                                color = if (isSelected) Primary else SurfaceContainerLowest,
+                                shadowElevation = 1.dp,
+                                modifier = Modifier.height(38.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null,
+                                        tint = if (isSelected) Color.White else OnSurfaceVariant,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = catName,
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = if (isSelected) Color.White else OnSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Main Scrollable Product List + Sticky Bottom Total Belanja
             Box(modifier = Modifier.weight(1f)) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 186.dp)
+                    contentPadding = PaddingValues(top = 6.dp, bottom = 196.dp)
                 ) {
                     // 0. Top Quick Notification / Jam Operasional Info
                     item {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                .padding(horizontal = 16.dp, vertical = 6.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -190,148 +370,6 @@ fun KasirPosScreen(
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                            }
-                        }
-                    }
-
-                    // 1. Search & Barcode Quick Field
-                    item {
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            color = SurfaceContainerLowest,
-                            shadowElevation = 2.dp
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Search,
-                                    contentDescription = null,
-                                    tint = OutlineColor,
-                                    modifier = Modifier
-                                        .padding(horizontal = 8.dp)
-                                        .size(22.dp)
-                                )
-                                Box(
-                                    modifier = Modifier.weight(1f),
-                                    contentAlignment = Alignment.CenterStart
-                                ) {
-                                    if (searchQuery.isEmpty()) {
-                                        Text(
-                                            text = "Ketik barang / barcode (cth: Indomie)...",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = OutlineColor,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                    BasicTextField(
-                                        value = searchQuery,
-                                        onValueChange = { searchQuery = it },
-                                        singleLine = true,
-                                        textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        ),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .testTag("kasir_search_input")
-                                    )
-                                }
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(
-                                        onClick = { searchQuery = "" },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Close,
-                                            contentDescription = "Hapus Pencarian",
-                                            tint = OutlineColor,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
-                                Button(
-                                    onClick = {
-                                        showBarcodeScannerSheet = true
-                                    },
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Primary,
-                                        contentColor = Color.White
-                                    ),
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
-                                    modifier = Modifier
-                                        .height(44.dp)
-                                        .testTag("btn_scan_barcode")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.QrCodeScanner,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Scan",
-                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // 2. Filter Kategori Cepat (Horizontal Scrollable Large Pills)
-                    item {
-                        val categories = listOf(
-                            Pair("Semua", Icons.Outlined.Dashboard),
-                            Pair("Sembako & Eceran", Icons.Outlined.Grain),
-                            Pair("Mie & Makanan", Icons.Outlined.RamenDining),
-                            Pair("Minuman Dingin", Icons.Outlined.AcUnit),
-                            Pair("Rokok", Icons.Outlined.SmokingRooms),
-                            Pair("Gas & Galon", Icons.Outlined.PropaneTank),
-                            Pair("Sabun & Bumbu", Icons.Outlined.CleaningServices)
-                        )
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            categories.forEach { (catName, icon) ->
-                                val isSelected = selectedCategory == catName
-                                Surface(
-                                    onClick = {
-                                        selectedCategory = catName
-                                    },
-                                    shape = RoundedCornerShape(50),
-                                    color = if (isSelected) Primary else SurfaceContainerLowest,
-                                    shadowElevation = 1.dp,
-                                    modifier = Modifier.height(42.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 16.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = icon,
-                                            contentDescription = null,
-                                            tint = if (isSelected) Color.White else OnSurfaceVariant,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Text(
-                                            text = catName,
-                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                            color = if (isSelected) Color.White else OnSurfaceVariant
-                                        )
-                                    }
-                                }
                             }
                         }
                     }
@@ -842,7 +880,7 @@ fun KasirPosScreen(
         // Interactive POS Barcode Scanner Sheet for Checkout
         if (showBarcodeScannerSheet) {
             PosCheckoutBarcodeScannerSheet(
-                catalog = viewModel.posCatalog,
+                catalog = livePosCatalog,
                 cartItems = cartItems,
                 totalBelanja = totalBelanja,
                 onScanAdd = { item ->
@@ -1137,190 +1175,192 @@ private fun PosCheckoutBarcodeScannerSheet(
                     }
                 }
 
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                // Pinned Camera Viewfinder + Search Bar inside Scanner Modal (Always Visible)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     // Camera Viewfinder Simulation
-                    item {
-                        Box(
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(170.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(InverseSurface)
+                            .padding(12.dp)
+                    ) {
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(185.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(InverseSurface)
-                                .padding(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .align(Alignment.TopCenter),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Surface(
-                                    shape = RoundedCornerShape(50),
-                                    color = Color.Black.copy(alpha = 0.45f)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(8.dp)
-                                                .clip(CircleShape)
-                                                .background(PrimaryFixed)
-                                        )
-                                        Text(
-                                            text = "PEMINDAI BARCODE KASIR AKTIF",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = OnPrimaryContainer
-                                        )
-                                    }
-                                }
-
-                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Surface(
-                                        onClick = onOpenWholesaleScanner,
-                                        shape = RoundedCornerShape(50),
-                                        color = Color.Black.copy(alpha = 0.45f)
-                                    ) {
-                                        Text(
-                                            text = "Mode Kulakan",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = Color.White,
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = { flashOn = !flashOn },
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .clip(CircleShape)
-                                            .background(if (flashOn) SecondaryContainer else Color.Black.copy(alpha = 0.4f))
-                                    ) {
-                                        Icon(
-                                            Icons.Outlined.FlashOn,
-                                            contentDescription = "Senter",
-                                            tint = if (flashOn) OnSecondaryContainer else Color.White,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
-                            }
-
-                            // Center Reticle
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.Center)
-                                    .size(width = 210.dp, height = 78.dp)
-                                    .border(2.dp, PrimaryFixed, RoundedCornerShape(12.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth(0.85f)
-                                            .height(2.dp)
-                                            .background(PrimaryFixed)
-                                    )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(
-                                        text = selectedScannedItem.barcode,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Color.White
-                                    )
-                                }
-                            }
-
-                            // Scanned Item Instant Add Bar
-                            Surface(
-                                onClick = { onScanAdd(selectedScannedItem) },
-                                shape = RoundedCornerShape(12.dp),
-                                color = Primary,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .align(Alignment.BottomCenter)
-                                    .testTag("btn_confirm_scanned_item")
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Icon(
-                                            Icons.Filled.CheckCircle,
-                                            contentDescription = null,
-                                            tint = PrimaryFixed,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                        Column {
-                                            Text(
-                                                text = "TERDETEKSI • ${formatRupiah(selectedScannedItem.price)}/${selectedScannedItem.unit}",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = PrimaryFixed
-                                            )
-                                            Text(
-                                                text = selectedScannedItem.name,
-                                                style = MaterialTheme.typography.headlineSmall,
-                                                color = Color.White,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                    }
-                                    Surface(shape = RoundedCornerShape(8.dp), color = SecondaryContainer) {
-                                        Text(
-                                            text = "+1 Scan Masuk",
-                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                            color = OnSecondaryContainer,
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Search / Manual Barcode Input
-                    item {
-                        OutlinedTextField(
-                            value = manualBarcodeQuery,
-                            onValueChange = { manualBarcodeQuery = it },
-                            label = { Text("Cari nama produk atau ketik kode barcode...") },
-                            leadingIcon = { Icon(Icons.Outlined.QrCode, contentDescription = null) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-
-                    // Quick Scannable Items List
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
+                                .align(Alignment.TopCenter),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "Simulasi Scan / Pilih Cepat Barang:",
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                            Text(
-                                text = "Ketuk untuk tambah",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = OnSurfaceVariant
-                            )
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = Color.Black.copy(alpha = 0.45f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(PrimaryFixed)
+                                    )
+                                    Text(
+                                        text = "PEMINDAI BARCODE KASIR AKTIF",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = OnPrimaryContainer
+                                    )
+                                }
+                            }
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Surface(
+                                    onClick = onOpenWholesaleScanner,
+                                    shape = RoundedCornerShape(50),
+                                    color = Color.Black.copy(alpha = 0.45f)
+                                ) {
+                                    Text(
+                                        text = "Mode Kulakan",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = { flashOn = !flashOn },
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(if (flashOn) SecondaryContainer else Color.Black.copy(alpha = 0.4f))
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.FlashOn,
+                                        contentDescription = "Senter",
+                                        tint = if (flashOn) OnSecondaryContainer else Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Center Reticle
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .size(width = 210.dp, height = 72.dp)
+                                .border(2.dp, PrimaryFixed, RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.85f)
+                                        .height(2.dp)
+                                        .background(PrimaryFixed)
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = selectedScannedItem.barcode,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White
+                                )
+                            }
+                        }
+
+                        // Scanned Item Instant Add Bar
+                        Surface(
+                            onClick = { onScanAdd(selectedScannedItem) },
+                            shape = RoundedCornerShape(12.dp),
+                            color = Primary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.BottomCenter)
+                                .testTag("btn_confirm_scanned_item")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        Icons.Filled.CheckCircle,
+                                        contentDescription = null,
+                                        tint = PrimaryFixed,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Column {
+                                        Text(
+                                            text = "TERDETEKSI • ${formatRupiah(selectedScannedItem.price)}/${selectedScannedItem.unit}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = PrimaryFixed
+                                        )
+                                        Text(
+                                            text = selectedScannedItem.name,
+                                            style = MaterialTheme.typography.headlineSmall,
+                                            color = Color.White,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                                Surface(shape = RoundedCornerShape(8.dp), color = SecondaryContainer) {
+                                    Text(
+                                        text = "+1 Scan Masuk",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = OnSecondaryContainer,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                    )
+                                }
+                            }
                         }
                     }
 
+                    // Search / Manual Barcode Input (Pinned)
+                    OutlinedTextField(
+                        value = manualBarcodeQuery,
+                        onValueChange = { manualBarcodeQuery = it },
+                        label = { Text("Cari nama produk atau ketik kode barcode...") },
+                        leadingIcon = { Icon(Icons.Outlined.QrCode, contentDescription = null) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Simulasi Scan / Pilih Cepat Barang:",
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                        Text(
+                            text = "Ketuk untuk tambah",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = OnSurfaceVariant
+                        )
+                    }
+                }
+
+                // Scrollable Product List inside Scanner Modal
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     items(matchingBarcodeItems.size) { index ->
                         val item = matchingBarcodeItems[index]
                         val inCartCount = cartItems

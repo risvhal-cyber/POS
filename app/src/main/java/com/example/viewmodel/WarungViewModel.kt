@@ -376,6 +376,45 @@ class WarungViewModel : ViewModel() {
     )
     val categories: StateFlow<List<String>> = _categories.asStateFlow()
 
+    private val _stockMutationLogs = MutableStateFlow(
+        listOf(
+            StockMutationLog(
+                id = "mut-1",
+                itemName = "Indomie Goreng Spesial",
+                type = StockMutationType.KULAKAN_MASUK,
+                qtyDelta = 40.0,
+                unit = "Bks",
+                stockBefore = 8.0,
+                stockAfter = 48.0,
+                timeLabel = "Pagi ini, 08:30",
+                referenceNote = "Kulakan 1 Dus • Agen Grosir Makmur"
+            ),
+            StockMutationLog(
+                id = "mut-2",
+                itemName = "Beras Ramos Premium",
+                type = StockMutationType.TERJUAL_KASIR,
+                qtyDelta = -2.0,
+                unit = "Kg",
+                stockBefore = 87.0,
+                stockAfter = 85.0,
+                timeLabel = "17:15 WIB",
+                referenceNote = "#TRX-20240524-0042 (Ibu Anisa)"
+            ),
+            StockMutationLog(
+                id = "mut-3",
+                itemName = "Gas LPG 3kg Melon",
+                type = StockMutationType.TERJUAL_KASIR,
+                qtyDelta = -2.0,
+                unit = "Tabung",
+                stockBefore = 5.0,
+                stockAfter = 3.0,
+                timeLabel = "16:40 WIB",
+                referenceNote = "#TRX-20240524-0041 (Mas Dian)"
+            )
+        )
+    )
+    val stockMutationLogs: StateFlow<List<StockMutationLog>> = _stockMutationLogs.asStateFlow()
+
     // Transactions History (Matches Image 11)
     private val _transactions = MutableStateFlow(
         listOf(
@@ -797,11 +836,13 @@ class WarungViewModel : ViewModel() {
         } else {
             "Transaksi Cepat Kasir"
         }
+        val trxCode = "#TRX-20250524-00${_transactions.value.size + 43}"
+        val cleanCustName = customerName.substringBefore(" (")
         val change = (tenderedAmount - total).coerceAtLeast(0L)
         val newTrx = TransactionRecord(
             id = "trx-${System.currentTimeMillis()}",
-            code = "#TRX-20250524-00${_transactions.value.size + 43}",
-            customerName = customerName.substringBefore(" ("),
+            code = trxCode,
+            customerName = cleanCustName,
             customerBadge = when (method) {
                 PaymentMethod.TUNAI -> "Tunai Lunas"
                 PaymentMethod.QRIS -> "QRIS Toko"
@@ -820,25 +861,96 @@ class WarungViewModel : ViewModel() {
         )
         _transactions.update { listOf(newTrx) + it }
 
+        // Pembaruan Stok Otomatis Setelah Transaksi Kasir
+        var updatedStockCount = 0
+        if (itemsList.isNotEmpty()) {
+            val newMutations = mutableListOf<StockMutationLog>()
+            _stockItems.update { currentStock ->
+                currentStock.map { stock ->
+                    val matchingCartQty = itemsList.filter { cart ->
+                        val cName = cart.name.lowercase()
+                        val sName = stock.name.lowercase()
+                        cName.contains(sName.take(8)) || sName.contains(cName.take(8)) ||
+                            (cName.contains("beras") && sName.contains("beras")) ||
+                            (cName.contains("minyak") && sName.contains("minyak")) ||
+                            (cName.contains("indomie") && sName.contains("indomie")) ||
+                            (cName.contains("telur") && sName.contains("telur")) ||
+                            (cName.contains("gas") && sName.contains("gas")) ||
+                            (cName.contains("aqua") && sName.contains("aqua")) ||
+                            (cName.contains("gula") && sName.contains("gula")) ||
+                            (cName.contains("mild") && sName.contains("mild"))
+                    }.sumOf { it.qty }
+
+                    if (matchingCartQty > 0.0) {
+                        updatedStockCount++
+                        val newStockQty = (stock.stockQty - matchingCartQty).coerceAtLeast(0.0)
+                        val newEmptyQty = if (stock.emptyQty > 0) stock.emptyQty + matchingCartQty.toInt() else stock.emptyQty
+                        newMutations.add(
+                            StockMutationLog(
+                                id = "mut-${System.currentTimeMillis()}-${stock.id}",
+                                itemName = stock.name,
+                                type = StockMutationType.TERJUAL_KASIR,
+                                qtyDelta = -matchingCartQty,
+                                unit = stock.unit,
+                                stockBefore = stock.stockQty,
+                                stockAfter = newStockQty,
+                                timeLabel = "Baru saja",
+                                referenceNote = "$trxCode ($cleanCustName)"
+                            )
+                        )
+                        stock.copy(
+                            stockQty = newStockQty,
+                            emptyQty = newEmptyQty,
+                            isCritical = newStockQty <= stock.minLimit
+                        )
+                    } else {
+                        stock
+                    }
+                }
+            }
+            if (newMutations.isNotEmpty()) {
+                _stockMutationLogs.update { newMutations + it }
+            }
+        }
+
         if (method == PaymentMethod.KASBON || (method == PaymentMethod.SPLIT_BON && tenderedAmount < total)) {
             val debtDiff = if (method == PaymentMethod.KASBON) total else (total - tenderedAmount)
-            recordNewKasbon(customerName.substringBefore(" ("), summaryStr, debtDiff, "Minggu Depan")
+            recordNewKasbon(cleanCustName, summaryStr, debtDiff, "Minggu Depan")
         }
 
         _cartItems.value = emptyList()
-        showToast("Transaksi ${formatRupiah(total)} Berhasil! Struk siap dicetak.")
+        val stockSuffix = if (updatedStockCount > 0) " • Stok $updatedStockCount barang otomatis diperbarui!" else ""
+        showToast("Transaksi ${formatRupiah(total)} Berhasil!$stockSuffix")
         _navigationStack.value = listOf(ScreenRoute.MainTabs)
     }
 
-    // Stock Operations
-    fun restockItem(id: String, addQty: Double) {
+    // Stock Operations (Barang Masuk Kulakan & Penyesuaian)
+    fun restockItem(id: String, addQty: Double, sourceNote: String = "Kulakan Cepat") {
         _stockItems.update { list ->
             list.map { item ->
                 if (item.id == id) {
-                    val updatedQty = item.stockQty + addQty
-                    showToast("Stok ${item.name} ditambah +${addQty.toInt()} ${item.unit}!")
+                    val beforeQty = item.stockQty
+                    val updatedQty = beforeQty + addQty
+                    val updatedEmpty = if (item.emptyQty > 0) (item.emptyQty - addQty.toInt()).coerceAtLeast(0) else 0
+                    _stockMutationLogs.update { logs ->
+                        listOf(
+                            StockMutationLog(
+                                id = "mut-${System.currentTimeMillis()}",
+                                itemName = item.name,
+                                type = StockMutationType.KULAKAN_MASUK,
+                                qtyDelta = addQty,
+                                unit = item.unit,
+                                stockBefore = beforeQty,
+                                stockAfter = updatedQty,
+                                timeLabel = "Baru saja",
+                                referenceNote = "$sourceNote • ${item.supplier}"
+                            )
+                        ) + logs
+                    }
+                    showToast("Barang masuk: ${item.name} +${addQty.toInt()} ${item.unit} (Total: ${updatedQty.toInt()} ${item.unit})")
                     item.copy(
                         stockQty = updatedQty,
+                        emptyQty = updatedEmpty,
                         isCritical = updatedQty <= item.minLimit
                     )
                 } else item
@@ -852,12 +964,52 @@ class WarungViewModel : ViewModel() {
         addQty: Double,
         unit: String,
         wholesalePrice: Long,
-        supplier: String
+        supplier: String,
+        sellingPriceOverride: Long? = null,
+        methodLabel: String = "Kulakan Baru"
     ) {
-        val existing = _stockItems.value.find { it.name.equals(name, ignoreCase = true) }
+        val existing = _stockItems.value.find {
+            it.name.equals(name, ignoreCase = true) ||
+                it.name.contains(name.take(8), ignoreCase = true) ||
+                name.contains(it.name.take(8), ignoreCase = true)
+        }
         if (existing != null) {
-            restockItem(existing.id, addQty)
+            _stockItems.update { list ->
+                list.map { item ->
+                    if (item.id == existing.id) {
+                        val beforeQty = item.stockQty
+                        val updatedQty = beforeQty + addQty
+                        val newSell = sellingPriceOverride ?: item.sellingPrice
+                        _stockMutationLogs.update { logs ->
+                            listOf(
+                                StockMutationLog(
+                                    id = "mut-${System.currentTimeMillis()}",
+                                    itemName = item.name,
+                                    type = if (methodLabel.contains("Opname", ignoreCase = true)) StockMutationType.OPNAME_KOREKSI else StockMutationType.KULAKAN_MASUK,
+                                    qtyDelta = addQty,
+                                    unit = item.unit,
+                                    stockBefore = beforeQty,
+                                    stockAfter = updatedQty,
+                                    timeLabel = "Baru saja",
+                                    referenceNote = "$methodLabel • $supplier (Modal ${formatRupiah(wholesalePrice)})"
+                                )
+                            ) + logs
+                        }
+                        showToast("Stok ${item.name} ditambah +${addQty.toInt()} ${item.unit} dari $supplier!")
+                        item.copy(
+                            stockQty = updatedQty,
+                            category = category.ifBlank { item.category },
+                            unit = unit.ifBlank { item.unit },
+                            wholesalePrice = wholesalePrice,
+                            sellingPrice = newSell,
+                            supplier = supplier.ifBlank { item.supplier },
+                            isCritical = updatedQty <= item.minLimit
+                        )
+                    } else item
+                }
+            }
         } else {
+            val calcSelling = sellingPriceOverride ?: (Math.round(wholesalePrice * 1.18 / 500.0) * 500L)
             val newItem = StockItem(
                 id = "stk-${System.currentTimeMillis()}",
                 name = name,
@@ -866,14 +1018,29 @@ class WarungViewModel : ViewModel() {
                 minLimit = 5.0,
                 unit = unit,
                 wholesalePrice = wholesalePrice,
-                sellingPrice = Math.round(wholesalePrice * 1.18 / 500.0) * 500L,
-                supplier = supplier,
+                sellingPrice = calcSelling,
+                supplier = supplier.ifBlank { "Agen Pasar Grosir" },
                 imageUrl = WarungImages.MINYAK_KITA_1,
                 restockPrimaryLabel = "+1 Dus (12)",
                 restockPrimaryAddQty = 12.0,
-                isCritical = false
+                isCritical = addQty <= 5.0
             )
             _stockItems.update { listOf(newItem) + it }
+            _stockMutationLogs.update { logs ->
+                listOf(
+                    StockMutationLog(
+                        id = "mut-${System.currentTimeMillis()}",
+                        itemName = newItem.name,
+                        type = StockMutationType.KULAKAN_MASUK,
+                        qtyDelta = addQty,
+                        unit = unit,
+                        stockBefore = 0.0,
+                        stockAfter = addQty,
+                        timeLabel = "Baru saja",
+                        referenceNote = "Barang Baru ($methodLabel) • ${newItem.supplier}"
+                    )
+                ) + logs
+            }
             showToast("Barang baru $name (+${addQty.toInt()} $unit) disimpan ke stok!")
         }
     }
@@ -893,12 +1060,29 @@ class WarungViewModel : ViewModel() {
     fun saveWholesaleCalcToCatalog(name: String, hpp: Long, sellingPrice: Long, packQty: Int) {
         val existing = _stockItems.value.find { it.name.contains(name.take(8), ignoreCase = true) }
         if (existing != null) {
+            val beforeQty = existing.stockQty
+            val afterQty = beforeQty + packQty
             _stockItems.update { list ->
                 list.map {
                     if (it.id == existing.id) {
-                        it.copy(wholesalePrice = hpp, sellingPrice = sellingPrice, stockQty = it.stockQty + packQty, isCritical = false)
+                        it.copy(wholesalePrice = hpp, sellingPrice = sellingPrice, stockQty = afterQty, isCritical = afterQty <= it.minLimit)
                     } else it
                 }
+            }
+            _stockMutationLogs.update { logs ->
+                listOf(
+                    StockMutationLog(
+                        id = "mut-${System.currentTimeMillis()}",
+                        itemName = existing.name,
+                        type = StockMutationType.KULAKAN_MASUK,
+                        qtyDelta = packQty.toDouble(),
+                        unit = existing.unit,
+                        stockBefore = beforeQty,
+                        stockAfter = afterQty,
+                        timeLabel = "Baru saja",
+                        referenceNote = "Kalkulator Kulakan (+$packQty ${existing.unit} • HPP ${formatRupiah(hpp)})"
+                    )
+                ) + logs
             }
         } else {
             val newItem = StockItem(
@@ -916,8 +1100,23 @@ class WarungViewModel : ViewModel() {
                 isCritical = false
             )
             _stockItems.update { listOf(newItem) + it }
+            _stockMutationLogs.update { logs ->
+                listOf(
+                    StockMutationLog(
+                        id = "mut-${System.currentTimeMillis()}",
+                        itemName = newItem.name,
+                        type = StockMutationType.KULAKAN_MASUK,
+                        qtyDelta = packQty.toDouble(),
+                        unit = "Pcs",
+                        stockBefore = 0.0,
+                        stockAfter = packQty.toDouble(),
+                        timeLabel = "Baru saja",
+                        referenceNote = "Kalkulator Kulakan Baru • HPP ${formatRupiah(hpp)}"
+                    )
+                ) + logs
+            }
         }
-        showToast("$name disimpan! Harga jual: ${formatRupiah(sellingPrice)}")
+        showToast("Kulakan $name (+$packQty pcs) masuk stok! Harga jual: ${formatRupiah(sellingPrice)}")
     }
 
     // Kasbon & Customer Operations
